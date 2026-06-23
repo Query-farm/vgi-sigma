@@ -4,7 +4,9 @@
 
 <p align="center"><em>A <a href="https://query.farm">Query.Farm</a> VGI worker for DuckDB.</em></p>
 
-# vgi-sigma
+# Evaluate Sigma Detection Rules over Log Rows in DuckDB
+
+> **vgi-sigma** · a [Query.Farm](https://query.farm) VGI worker
 
 **Evaluate [Sigma](https://sigmahq.io) detection rules against log/event rows —
 detection-as-code, right inside SQL.**
