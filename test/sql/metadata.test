@@ -1,0 +1,57 @@
+# name: test/sql/metadata.test
+# description: sigma_rule_info + sigma_match_fields table functions
+# group: [vgi_sigma]
+
+require-env VGI_SIGMA_WORKER
+
+statement ok
+LOAD vgi;
+
+statement ok
+ATTACH 'sigma' AS sigma (TYPE vgi, LOCATION '${VGI_SIGMA_WORKER}');
+
+# ---- sigma_rule_info(): one metadata row ----
+
+query IIIII
+SELECT title, level, status, product, service
+FROM sigma.sigma_rule_info(
+    E'title: Failed Network Logon\nid: 12345678-1234-1234-1234-123456789012\nstatus: test\nlevel: high\ntags: [attack.credential_access, attack.t1110]\nlogsource: {product: windows, service: security}\ndetection:\n  selection:\n    EventID: 4625\n    LogonType: 3\n  condition: selection\n');
+----
+Failed Network Logon	high	test	windows	security
+
+# Exactly one row.
+query I
+SELECT count(*) FROM sigma.sigma_rule_info(
+    E'title: T\nlogsource: {service: security}\ndetection:\n  sel: {EventID: 1}\n  condition: sel\n');
+----
+1
+
+# Tags expand via UNNEST.
+query I rowsort
+SELECT UNNEST(tags) AS tag
+FROM sigma.sigma_rule_info(
+    E'title: T\ntags: [attack.credential_access, attack.t1110]\nlogsource: {service: security}\ndetection:\n  sel: {EventID: 1}\n  condition: sel\n');
+----
+attack.credential_access
+attack.t1110
+
+# ---- sigma_match_fields(): one row per referenced field ----
+
+query I rowsort
+SELECT field
+FROM sigma.sigma_match_fields(
+    E'title: T\nlogsource: {product: windows, service: security}\ndetection:\n  selection:\n    EventID: 4625\n    LogonType: 3\n  condition: selection\n');
+----
+EventID
+LogonType
+
+# Field count for index / coverage planning.
+query I
+SELECT count(*)
+FROM sigma.sigma_match_fields(
+    E'title: T\nlogsource: {service: security}\ndetection:\n  selection:\n    EventID: 4625\n    LogonType: 3\n  condition: selection\n');
+----
+2
+
+statement ok
+DETACH sigma;

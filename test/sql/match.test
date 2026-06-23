@@ -1,0 +1,88 @@
+# name: test/sql/match.test
+# description: sigma_match scalar over a column of event JSON
+# group: [vgi_sigma]
+
+require-env VGI_SIGMA_WORKER
+
+statement ok
+LOAD vgi;
+
+statement ok
+ATTACH 'sigma' AS sigma (TYPE vgi, LOCATION '${VGI_SIGMA_WORKER}');
+
+# A constant rule applied over a CTE of event JSON strings. Failed network
+# logon == EventID 4625 AND LogonType 3.
+
+# Matching event -> true; everything else -> false.
+query I
+SELECT sigma.sigma_match(
+    '{"EventID": 4625, "LogonType": 3}',
+    E'title: Failed Network Logon\nlogsource: {product: windows, service: security}\ndetection:\n  selection:\n    EventID: 4625\n    LogonType: 3\n  condition: selection\n');
+----
+true
+
+query I
+SELECT sigma.sigma_match(
+    '{"EventID": 4624, "LogonType": 3}',
+    E'title: T\nlogsource: {service: security}\ndetection:\n  selection:\n    EventID: 4625\n    LogonType: 3\n  condition: selection\n');
+----
+false
+
+# Which rows of a log match? (the headline pattern)
+query I rowsort
+WITH
+  rule AS (
+    SELECT E'title: Failed Network Logon\nlogsource: {product: windows, service: security}\ndetection:\n  selection:\n    EventID: 4625\n    LogonType: 3\n  condition: selection\n' AS r
+  ),
+  logs(id, event) AS (
+    VALUES
+      (1, '{"EventID": 4625, "LogonType": 3}'),
+      (2, '{"EventID": 4625, "LogonType": 2}'),
+      (3, '{"EventID": 4624, "LogonType": 3}'),
+      (4, '{"EventID": 4625, "LogonType": 3, "extra": "x"}')
+  )
+SELECT id FROM logs, rule WHERE sigma.sigma_match(event, r);
+----
+1
+4
+
+# contains modifier
+query I
+SELECT sigma.sigma_match(
+    '{"CommandLine": "powershell -enc whoami"}',
+    E'title: T\nlogsource: {category: process_creation}\ndetection:\n  sel:\n    CommandLine|contains: whoami\n  condition: sel\n');
+----
+true
+
+# OR-list selection: EventID is 1 or 4688
+query I
+SELECT sigma.sigma_match(
+    '{"EventID": 4688}',
+    E'title: T\nlogsource: {category: process_creation}\ndetection:\n  sel:\n    EventID: [1, 4688]\n  condition: sel\n');
+----
+true
+
+# 1 of selection_*
+query I
+SELECT sigma.sigma_match(
+    '{"EventID": 2}',
+    E'title: T\nlogsource: {service: security}\ndetection:\n  selection_a: {EventID: 1}\n  selection_b: {EventID: 2}\n  condition: 1 of selection_*\n');
+----
+true
+
+# NULL event / NULL rule -> NULL
+query I
+SELECT sigma.sigma_match(NULL, E'title: T\nlogsource: {service: security}\ndetection:\n  sel: {EventID: 1}\n  condition: sel\n') IS NULL;
+----
+true
+
+# Malformed event JSON -> non-match (false), never an error.
+query I
+SELECT sigma.sigma_match(
+    'this is not json',
+    E'title: T\nlogsource: {service: security}\ndetection:\n  sel: {EventID: 1}\n  condition: sel\n');
+----
+false
+
+statement ok
+DETACH sigma;

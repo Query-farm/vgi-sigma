@@ -1,0 +1,51 @@
+# name: test/sql/check.test
+# description: sigma_check scalar validates rule YAML
+# group: [vgi_sigma]
+
+require-env VGI_SIGMA_WORKER
+
+statement ok
+LOAD vgi;
+
+statement ok
+ATTACH 'sigma' AS sigma (TYPE vgi, LOCATION '${VGI_SIGMA_WORKER}');
+
+# A well-formed rule validates.
+query I
+SELECT sigma.sigma_check(
+    E'title: T\nlogsource: {service: security}\ndetection:\n  selection:\n    EventID: 4625\n  condition: selection\n');
+----
+true
+
+# Malformed YAML -> false (never an error).
+query I
+SELECT sigma.sigma_check(': : not valid : :');
+----
+false
+
+# A non-rule string -> false.
+query I
+SELECT sigma.sigma_check('just some text');
+----
+false
+
+# Missing logsource (a Sigma requirement) -> false.
+query I
+SELECT sigma.sigma_check(E'title: T\ndetection:\n  sel: {EventID: 1}\n  condition: sel\n');
+----
+false
+
+# Unsupported modifier (cidr) -> false (we never silently mis-evaluate).
+query I
+SELECT sigma.sigma_check(E'title: T\nlogsource: {category: firewall}\ndetection:\n  sel:\n    ip|cidr: 10.0.0.0/8\n  condition: sel\n');
+----
+false
+
+# NULL -> NULL.
+query I
+SELECT sigma.sigma_check(NULL) IS NULL;
+----
+true
+
+statement ok
+DETACH sigma;
