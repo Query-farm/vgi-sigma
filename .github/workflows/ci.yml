@@ -126,5 +126,11 @@ jobs:
       - name: Type check (mypy)
         run: uv run mypy vgi_sigma/
 
+      # Run pydoclint in an isolated environment (uvx) rather than the project
+      # venv: pydoclint depends on `docstring-parser-fork`, while vgi-python
+      # (via vgi-rpc) depends on upstream `docstring-parser`. Both install into
+      # the same `docstring_parser` import namespace, so co-installing them in
+      # one venv makes pydoclint's import non-deterministic. uvx keeps it apart;
+      # it still reads [tool.pydoclint] from pyproject.toml.
       - name: Docstring lint (pydoclint)
-        run: uv run pydoclint vgi_sigma/
+        run: uvx pydoclint vgi_sigma/
