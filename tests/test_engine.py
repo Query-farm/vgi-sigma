@@ -84,9 +84,7 @@ class TestModifiers:
         assert engine.match('{"Image": "C:\\\\System32\\\\cmd.exe"}', rule) is True
 
     def test_all_modifier(self) -> None:
-        rule = _rule(
-            "detection:\n  sel:\n    CommandLine|contains|all:\n      - foo\n      - bar\n  condition: sel\n"
-        )
+        rule = _rule("detection:\n  sel:\n    CommandLine|contains|all:\n      - foo\n      - bar\n  condition: sel\n")
         assert engine.match('{"CommandLine": "foo and bar"}', rule) is True
         assert engine.match('{"CommandLine": "only foo"}', rule) is False
 
@@ -100,10 +98,7 @@ class TestListAndConditions:
 
     def test_one_of_selection(self) -> None:
         rule = _rule(
-            "detection:\n"
-            "  selection_a: {EventID: 1}\n"
-            "  selection_b: {EventID: 2}\n"
-            "  condition: 1 of selection_*\n"
+            "detection:\n  selection_a: {EventID: 1}\n  selection_b: {EventID: 2}\n  condition: 1 of selection_*\n"
         )
         assert engine.match('{"EventID": 2}', rule) is True
         assert engine.match('{"EventID": 3}', rule) is False

@@ -1,2 +1,1 @@
-# Presence of this file puts the repo root on sys.path so tests can
-# `import sigma_worker` and `import vgi_sigma`.
+"""Put the repo root on ``sys.path`` so tests can import ``sigma_worker`` and ``vgi_sigma``."""

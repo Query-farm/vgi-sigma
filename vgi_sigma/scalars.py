@@ -43,6 +43,8 @@ class SigmaMatchFunction(ScalarFunction):
     """``sigma_match(event_json, rule_yaml)`` -- does the event match the rule?"""
 
     class Meta:
+        """VGI function metadata for ``sigma_match``."""
+
         name = "sigma_match"
         description = (
             "True if the JSON event matches the Sigma rule. Use per-row over a log "
@@ -66,6 +68,7 @@ class SigmaMatchFunction(ScalarFunction):
         event_json: Annotated[pa.StringArray, Param(doc="The event, as a JSON object string.")],
         rule_yaml: Annotated[pa.StringArray, Param(doc="The Sigma rule, as YAML.")],
     ) -> Annotated[pa.BooleanArray, Returns()]:
+        """Return, per row, whether the JSON event matches the Sigma rule."""
         events = event_json.to_pylist()
         rules = rule_yaml.to_pylist()
         out = [engine.match(e, r) for e, r in zip(events, rules, strict=True)]
@@ -81,6 +84,8 @@ class SigmaCheckFunction(ScalarFunction):
     """``sigma_check(rule_yaml)`` -- does the rule parse + compile (supported)?"""
 
     class Meta:
+        """VGI function metadata for ``sigma_check``."""
+
         name = "sigma_check"
         description = (
             "True if the Sigma rule parses and compiles with only supported modifiers; "
@@ -106,6 +111,7 @@ class SigmaCheckFunction(ScalarFunction):
         cls,
         rule_yaml: Annotated[pa.StringArray, Param(doc="The Sigma rule, as YAML.")],
     ) -> Annotated[pa.BooleanArray, Returns()]:
+        """Return, per row, whether the Sigma rule parses and compiles."""
         out = [engine.check(r) for r in rule_yaml.to_pylist()]
         return pa.array(out, type=pa.bool_())
 

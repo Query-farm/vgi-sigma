@@ -71,10 +71,10 @@ class SigmaRuleInfoFunction(TableFunctionGenerator[_RuleArg]):
     FIXED_SCHEMA: ClassVar[pa.Schema] = _RULE_INFO_SCHEMA
 
     class Meta:
+        """VGI function metadata for ``sigma_rule_info``."""
+
         name = "sigma_rule_info"
-        description = (
-            "One row of rule metadata: title, id, level, status, description, product, service, tags"
-        )
+        description = "One row of rule metadata: title, id, level, status, description, product, service, tags"
         categories = ["sigma", "metadata"]
         examples = [
             FunctionExample(
@@ -97,10 +97,12 @@ class SigmaRuleInfoFunction(TableFunctionGenerator[_RuleArg]):
 
     @classmethod
     def cardinality(cls, params: BindParams[_RuleArg]) -> TableCardinality:
+        """Estimate the row count: exactly one metadata row per rule."""
         return TableCardinality(estimate=1, max=1)
 
     @classmethod
     def process(cls, params: ProcessParams[_RuleArg], state: None, out: OutputCollector) -> None:
+        """Emit the single metadata row for the bound rule."""
         info = engine.rule_info(params.args.rule_yaml)
         if info is not None:
             out.emit(
@@ -125,9 +127,7 @@ class SigmaRuleInfoFunction(TableFunctionGenerator[_RuleArg]):
 # sigma_match_fields -- one row per referenced event field
 # ===========================================================================
 
-_MATCH_FIELDS_SCHEMA = pa.schema(
-    [field("field", pa.string(), "An event field the rule references.", nullable=False)]
-)
+_MATCH_FIELDS_SCHEMA = pa.schema([field("field", pa.string(), "An event field the rule references.", nullable=False)])
 
 
 @init_single_worker
@@ -141,6 +141,8 @@ class SigmaMatchFieldsFunction(TableFunctionGenerator[_RuleArg]):
     FIXED_SCHEMA: ClassVar[pa.Schema] = _MATCH_FIELDS_SCHEMA
 
     class Meta:
+        """VGI function metadata for ``sigma_match_fields``."""
+
         name = "sigma_match_fields"
         description = "One row per event field the rule references (for index/coverage planning)"
         categories = ["sigma", "metadata"]
@@ -157,10 +159,12 @@ class SigmaMatchFieldsFunction(TableFunctionGenerator[_RuleArg]):
 
     @classmethod
     def cardinality(cls, params: BindParams[_RuleArg]) -> TableCardinality:
+        """Estimate the row count: roughly one row per referenced field."""
         return TableCardinality(estimate=4, max=None)
 
     @classmethod
     def process(cls, params: ProcessParams[_RuleArg], state: None, out: OutputCollector) -> None:
+        """Emit one row per event field the bound rule references."""
         fields = engine.match_fields(params.args.rule_yaml)
         if fields is not None:
             out.emit(pa.RecordBatch.from_pydict({"field": fields}, schema=params.output_schema))
