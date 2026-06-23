@@ -133,4 +133,4 @@ jobs:
       # one venv makes pydoclint's import non-deterministic. uvx keeps it apart;
       # it still reads [tool.pydoclint] from pyproject.toml.
       - name: Docstring lint (pydoclint)
-        run: uvx pydoclint vgi_sigma/
+        run: uvx pydoclint --config pyproject.toml vgi_sigma/
