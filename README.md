@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="docs/vgi-logo.png" alt="Vector Gateway Interface (VGI)" width="320">
+</p>
+
+<p align="center"><em>A <a href="https://query.farm">Query.Farm</a> VGI worker for DuckDB.</em></p>
+
 # vgi-sigma
 
 **Evaluate [Sigma](https://sigmahq.io) detection rules against log/event rows —
@@ -166,3 +172,12 @@ License v2.1 (LGPL-2.1)**. pySigma is used **unmodified** as an ordinary
 installed dependency (imported, never altered or statically linked into a
 derivative). This worker's own source remains MIT-licensed; redistributing it
 together with pySigma must honour pySigma's LGPL-2.1 terms for that component.
+
+---
+
+## Authorship & License
+
+Written by [Query.Farm](https://query.farm) — every VGI worker is designed and built by Query.Farm.
+
+Copyright 2026 Query Farm LLC - https://query.farm
+
