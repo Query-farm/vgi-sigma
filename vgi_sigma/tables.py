@@ -31,7 +31,7 @@ from vgi.table_function import (
 )
 from vgi_rpc.rpc import OutputCollector
 
-from . import engine
+from . import engine, meta
 from .schema_utils import field
 
 
@@ -76,8 +76,46 @@ class SigmaRuleInfoFunction(TableFunctionGenerator[_RuleArg]):
         name = "sigma_rule_info"
         description = "One row of rule metadata: title, id, level, status, description, product, service, tags"
         categories = ["sigma", "metadata"]
-        tags = {
-            "vgi.columns_md": (
+        tags = meta.object_tags(
+            title="Sigma Rule Metadata Info",
+            doc_llm=(
+                "## sigma_rule_info(rule_yaml)\n\n"
+                "Parses a [Sigma](https://sigmahq.io) rule (YAML) and returns a single row of "
+                "its header metadata: `title`, `id`, `level`, `status`, `description`, logsource "
+                "`product`/`service`, and the rule's `tags` (a `VARCHAR[]`, typically MITRE "
+                "ATT&CK references like `attack.t1110`).\n\n"
+                "**When to use it.** Triage and catalog rules without evaluating them against "
+                "events -- e.g. build an inventory of a rule repository, filter by severity "
+                "`level`, group by logsource `product`, or expand `tags` with `UNNEST` to map "
+                "coverage against MITRE ATT&CK.\n\n"
+                "**Inputs.** `rule_yaml` -- a complete Sigma rule (positional). Like every rule "
+                "here it needs a non-empty `logsource:` block.\n\n"
+                "**Output & edge cases.** A table function returning exactly one row. A NULL rule "
+                "yields **no rows**; a malformed rule raises a clear parse error (this is an "
+                "introspection helper run against a known rule, not a per-row scan). Header fields "
+                "absent from the rule come back NULL."
+            ),
+            doc_md=(
+                "# sigma_rule_info\n\n"
+                "Returns one row of header metadata for a Sigma rule -- the human-facing fields "
+                "you would show in a rule catalog or triage view.\n\n"
+                "## Usage\n\n"
+                "```sql\n"
+                "SELECT title, level FROM sigma.sigma_rule_info(:rule);\n"
+                "SELECT UNNEST(tags) AS attack FROM sigma.sigma_rule_info(:rule);\n"
+                "```\n\n"
+                "## Notes\n\n"
+                "- One row per rule; a NULL rule yields no rows.\n"
+                "- A malformed rule raises a clear parse error.\n"
+                "- The `tags` column is a `VARCHAR[]` (use `UNNEST` to expand it)."
+            ),
+            keywords=(
+                "sigma, sigma_rule_info, rule metadata, title, severity, level, status, "
+                "MITRE ATT&CK, attack tags, logsource, triage, detection-as-code"
+            ),
+            relative_path="vgi_sigma/tables.py",
+        ) | {
+            "vgi.result_columns_md": (
                 "| column | type | description |\n"
                 "|---|---|---|\n"
                 "| `title` | VARCHAR | Rule title. |\n"
@@ -160,8 +198,44 @@ class SigmaMatchFieldsFunction(TableFunctionGenerator[_RuleArg]):
         name = "sigma_match_fields"
         description = "One row per event field the rule references (for index/coverage planning)"
         categories = ["sigma", "metadata"]
-        tags = {
-            "vgi.columns_md": (
+        tags = meta.object_tags(
+            title="Sigma Referenced Event Fields",
+            doc_llm=(
+                "## sigma_match_fields(rule_yaml)\n\n"
+                "Returns one row per distinct event field that a [Sigma](https://sigmahq.io) rule "
+                "keys on (e.g. `EventID`, `LogonType`, `Image`). It answers 'what columns does "
+                "this rule actually look at?' without evaluating the rule against any data.\n\n"
+                "**When to use it.** Plan indexes and storage coverage: discover which log fields "
+                "must be present and indexed for a rule to be evaluable, audit a fleet of rules "
+                "for a common field set, or detect rules that reference fields your pipeline does "
+                "not collect.\n\n"
+                "**Inputs.** `rule_yaml` -- a complete Sigma rule (positional), with a non-empty "
+                "`logsource:` block.\n\n"
+                "**Output & edge cases.** A table function emitting one `field` row per "
+                "referenced field. A NULL rule yields **no rows**; a malformed rule raises a "
+                "clear parse error. Bare-keyword conditions (which match anywhere in the event "
+                "rather than a named field) contribute no field rows."
+            ),
+            doc_md=(
+                "# sigma_match_fields\n\n"
+                "Lists the event fields a Sigma rule references, one per row -- the input for "
+                "index and coverage planning.\n\n"
+                "## Usage\n\n"
+                "```sql\n"
+                "SELECT field FROM sigma.sigma_match_fields(:rule);\n"
+                "```\n\n"
+                "## Notes\n\n"
+                "- One row per referenced field; a NULL rule yields no rows.\n"
+                "- A malformed rule raises a clear parse error.\n"
+                "- Bare-keyword matches (no named field) contribute no rows."
+            ),
+            keywords=(
+                "sigma, sigma_match_fields, referenced fields, event fields, index planning, "
+                "coverage, log fields, schema, detection-as-code"
+            ),
+            relative_path="vgi_sigma/tables.py",
+        ) | {
+            "vgi.result_columns_md": (
                 "| column | type | description |\n"
                 "|---|---|---|\n"
                 "| `field` | VARCHAR | An event field the rule references, e.g. `EventID`. |"

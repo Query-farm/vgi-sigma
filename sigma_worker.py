@@ -68,24 +68,85 @@ _CATALOG_DESCRIPTION_MD = (
 )
 
 _MAIN_DESCRIPTION_LLM = (
-    "Sigma detection-rule functions over log/event rows: sigma_match and sigma_check (per-row "
-    "scalars) plus sigma_rule_info and sigma_match_fields (table functions returning rule metadata "
-    "and the event fields a rule references)."
+    "## sigma.main\n\n"
+    "The single schema of the `sigma` catalog, holding every Sigma detection-rule function. Use "
+    "it to bring SIEM-style 'detection-as-code' into SQL: compile a [Sigma](https://sigmahq.io) "
+    "rule once and test it against an entire log/event table.\n\n"
+    "**Functions.**\n\n"
+    "- `sigma_match(event_json, rule_yaml)` (scalar) — does a JSON event match a rule? The "
+    "headline predicate; apply per row over a log column.\n"
+    "- `sigma_check(rule_yaml)` (scalar) — does a rule parse and compile with supported features? "
+    "Never raises.\n"
+    "- `sigma_rule_info(rule_yaml)` (table) — one row of rule header metadata (title, id, level, "
+    "status, product/service, MITRE ATT&CK tags).\n"
+    "- `sigma_match_fields(rule_yaml)` (table) — the event fields a rule references, for index "
+    "and coverage planning.\n\n"
+    "**Notes.** Every rule must include a non-empty `logsource:` block. Rules compile once per "
+    "distinct text (cached), then evaluate per row, so a constant rule over a column is cheap."
 )
 
 _MAIN_DESCRIPTION_MD = (
-    "Sigma detection-rule evaluation functions powered by pySigma: `sigma_match`, `sigma_check`, "
-    "`sigma_rule_info`, `sigma_match_fields`."
+    "# sigma.main\n\n"
+    "Sigma detection-rule evaluation for SQL, powered by "
+    "[pySigma](https://github.com/SigmaHQ/pySigma).\n\n"
+    "## What's here\n\n"
+    "| function | kind | purpose |\n"
+    "|---|---|---|\n"
+    "| `sigma_match` | scalar | True if a JSON event matches a rule. |\n"
+    "| `sigma_check` | scalar | True if a rule parses + compiles. |\n"
+    "| `sigma_rule_info` | table | One row of rule header metadata. |\n"
+    "| `sigma_match_fields` | table | One row per referenced event field. |\n\n"
+    "## Typical use\n\n"
+    "```sql\n"
+    "SELECT * FROM logs WHERE sigma.sigma_match(to_json(logs), :rule);\n"
+    "```\n\n"
+    "Every example rule carries a non-empty `logsource:` block, which pySigma requires."
 )
 
 _CATALOG_TAGS = {
-    "vgi.description_llm": _CATALOG_DESCRIPTION_LLM,
-    "vgi.description_md": _CATALOG_DESCRIPTION_MD,
+    "vgi.title": "Sigma Detection-Rule Evaluation",
+    "vgi.keywords": (
+        "sigma, detection rules, detection-as-code, SIEM, threat detection, threat hunting, "
+        "log analysis, event matching, MITRE ATT&CK, pySigma, security, defensive"
+    ),
+    "vgi.doc_llm": _CATALOG_DESCRIPTION_LLM,
+    "vgi.doc_md": _CATALOG_DESCRIPTION_MD,
     "vgi.author": "Query.Farm",
     "vgi.copyright": "Copyright 2026 Query Farm LLC - https://query.farm",
     "vgi.license": "MIT",
     "vgi.support_contact": "https://github.com/Query-farm/vgi-sigma/issues",
     "vgi.support_policy_url": "https://github.com/Query-farm/vgi-sigma/blob/main/README.md",
+}
+
+# VGI506: representative, catalog-qualified example queries for the schema.
+_SCHEMA_EXAMPLE_QUERIES = (
+    'SELECT sigma.sigma_match(\'{"EventID": 4625, "LogonType": 3}\', '
+    "'logsource: {service: security}\ndetection:\n  selection:\n    EventID: 4625\n"
+    "  condition: selection');\n"
+    "SELECT sigma.sigma_check('logsource: {service: security}\ndetection:\n  sel:\n"
+    "    EventID: 1\n  condition: sel');\n"
+    "SELECT title, level FROM sigma.sigma_rule_info('title: Failed Logon\nlevel: high\n"
+    "logsource: {service: security}\ndetection:\n  sel:\n    EventID: 4625\n  condition: sel');\n"
+    "SELECT field FROM sigma.sigma_match_fields('logsource: {service: security}\n"
+    "detection:\n  sel:\n    EventID: 4625\n    LogonType: 3\n  condition: sel');"
+)
+
+# Per-schema discovery/description + VGI123 classifying tags. Note the
+# classifying keys (domain/category/topic) are BARE, not vgi.-namespaced.
+_SCHEMA_TAGS = {
+    "vgi.title": "Sigma — main",
+    "vgi.keywords": (
+        "sigma, sigma_match, sigma_check, sigma_rule_info, sigma_match_fields, detection, "
+        "SIEM, threat detection, log analysis, detection-as-code, MITRE ATT&CK"
+    ),
+    "vgi.source_url": "https://github.com/Query-farm/vgi-sigma/blob/main/sigma_worker.py",
+    "vgi.doc_llm": _MAIN_DESCRIPTION_LLM,
+    "vgi.doc_md": _MAIN_DESCRIPTION_MD,
+    "vgi.example_queries": _SCHEMA_EXAMPLE_QUERIES,
+    # VGI123 classifying tags (bare keys for faceting/discovery).
+    "domain": "security",
+    "category": "detection",
+    "topic": "sigma-detection-rules",
 }
 
 _SIGMA_CATALOG = Catalog(
@@ -98,10 +159,7 @@ _SIGMA_CATALOG = Catalog(
         Schema(
             name="main",
             comment="Evaluate, validate, and introspect Sigma detection rules over log/event rows",
-            tags={
-                "vgi.description_llm": _MAIN_DESCRIPTION_LLM,
-                "vgi.description_md": _MAIN_DESCRIPTION_MD,
-            },
+            tags=_SCHEMA_TAGS,
             functions=list(_FUNCTIONS),
         ),
     ],
