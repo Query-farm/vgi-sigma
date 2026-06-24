@@ -76,6 +76,20 @@ class SigmaRuleInfoFunction(TableFunctionGenerator[_RuleArg]):
         name = "sigma_rule_info"
         description = "One row of rule metadata: title, id, level, status, description, product, service, tags"
         categories = ["sigma", "metadata"]
+        tags = {
+            "vgi.columns_md": (
+                "| column | type | description |\n"
+                "|---|---|---|\n"
+                "| `title` | VARCHAR | Rule title. |\n"
+                "| `id` | VARCHAR | Rule UUID (the `id` field). |\n"
+                "| `level` | VARCHAR | Severity: `informational`/`low`/`medium`/`high`/`critical`. |\n"
+                "| `status` | VARCHAR | Lifecycle status: `stable`/`test`/`experimental`/… |\n"
+                "| `description` | VARCHAR | Human-readable description. |\n"
+                "| `product` | VARCHAR | logsource product, e.g. `windows`. |\n"
+                "| `service` | VARCHAR | logsource service, e.g. `security`. |\n"
+                "| `tags` | VARCHAR[] | Rule tags, e.g. `attack.t1110`. |"
+            ),
+        }
         examples = [
             FunctionExample(
                 sql=(
@@ -146,6 +160,13 @@ class SigmaMatchFieldsFunction(TableFunctionGenerator[_RuleArg]):
         name = "sigma_match_fields"
         description = "One row per event field the rule references (for index/coverage planning)"
         categories = ["sigma", "metadata"]
+        tags = {
+            "vgi.columns_md": (
+                "| column | type | description |\n"
+                "|---|---|---|\n"
+                "| `field` | VARCHAR | An event field the rule references, e.g. `EventID`. |"
+            ),
+        }
         examples = [
             FunctionExample(
                 sql=(
