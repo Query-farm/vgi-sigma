@@ -109,11 +109,20 @@ class SigmaRuleInfoFunction(TableFunctionGenerator[_RuleArg]):
                 "- A malformed rule raises a clear parse error.\n"
                 "- The `tags` column is a `VARCHAR[]` (use `UNNEST` to expand it)."
             ),
-            keywords=(
-                "sigma, sigma_rule_info, rule metadata, title, severity, level, status, "
-                "MITRE ATT&CK, attack tags, logsource, triage, detection-as-code"
+            keywords=meta.keywords_json(
+                "sigma",
+                "sigma_rule_info",
+                "rule metadata",
+                "title",
+                "severity",
+                "level",
+                "status",
+                "MITRE ATT&CK",
+                "attack tags",
+                "logsource",
+                "triage",
+                "detection-as-code",
             ),
-            relative_path="vgi_sigma/tables.py",
         ) | {
             "vgi.result_columns_md": (
                 "| column | type | description |\n"
@@ -229,11 +238,17 @@ class SigmaMatchFieldsFunction(TableFunctionGenerator[_RuleArg]):
                 "- A malformed rule raises a clear parse error.\n"
                 "- Bare-keyword matches (no named field) contribute no rows."
             ),
-            keywords=(
-                "sigma, sigma_match_fields, referenced fields, event fields, index planning, "
-                "coverage, log fields, schema, detection-as-code"
+            keywords=meta.keywords_json(
+                "sigma",
+                "sigma_match_fields",
+                "referenced fields",
+                "event fields",
+                "index planning",
+                "coverage",
+                "log fields",
+                "schema",
+                "detection-as-code",
             ),
-            relative_path="vgi_sigma/tables.py",
         ) | {
             "vgi.result_columns_md": (
                 "| column | type | description |\n"

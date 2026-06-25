@@ -131,11 +131,20 @@ class SigmaMatchFunction(ScalarFunction):
                 "- The rule compiles once per distinct string, then evaluates per row, so a "
                 "constant rule over a whole column is cheap."
             ),
-            keywords=(
-                "sigma, sigma_match, detection, detect, SIEM, threat hunting, rule match, "
-                "event match, log analysis, detection-as-code, EDR, security"
+            keywords=meta.keywords_json(
+                "sigma",
+                "sigma_match",
+                "detection",
+                "detect",
+                "SIEM",
+                "threat hunting",
+                "rule match",
+                "event match",
+                "log analysis",
+                "detection-as-code",
+                "EDR",
+                "security",
             ),
-            relative_path="vgi_sigma/scalars.py",
         ) | {"vgi.executable_examples": _MATCH_EXECUTABLE_EXAMPLES}
         examples = [
             FunctionExample(
@@ -217,11 +226,18 @@ class SigmaCheckFunction(ScalarFunction):
                 "- Never raises -- malformed or unsupported rules simply return `false`.\n"
                 "- NULL in, NULL out."
             ),
-            keywords=(
-                "sigma, sigma_check, validate, lint, rule validation, compile, parse, "
-                "supported features, detection-as-code, security"
+            keywords=meta.keywords_json(
+                "sigma",
+                "sigma_check",
+                "validate",
+                "lint",
+                "rule validation",
+                "compile",
+                "parse",
+                "supported features",
+                "detection-as-code",
+                "security",
             ),
-            relative_path="vgi_sigma/scalars.py",
         )
         examples = [
             FunctionExample(

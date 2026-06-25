@@ -1,7 +1,7 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#     "vgi-python[http]>=0.8.4",
+#     "vgi-python[http]>=0.8.5",
 #     "pysigma>=0.11",
 # ]
 # ///
@@ -34,6 +34,8 @@ Usage:
 """
 
 from __future__ import annotations
+
+import json
 
 from vgi import Worker
 from vgi.catalog import Catalog, Schema
@@ -105,9 +107,21 @@ _MAIN_DESCRIPTION_MD = (
 
 _CATALOG_TAGS = {
     "vgi.title": "Sigma Detection-Rule Evaluation",
-    "vgi.keywords": (
-        "sigma, detection rules, detection-as-code, SIEM, threat detection, threat hunting, "
-        "log analysis, event matching, MITRE ATT&CK, pySigma, security, defensive"
+    "vgi.keywords": json.dumps(
+        [
+            "sigma",
+            "detection rules",
+            "detection-as-code",
+            "SIEM",
+            "threat detection",
+            "threat hunting",
+            "log analysis",
+            "event matching",
+            "MITRE ATT&CK",
+            "pySigma",
+            "security",
+            "defensive",
+        ]
     ),
     "vgi.doc_llm": _CATALOG_DESCRIPTION_LLM,
     "vgi.doc_md": _CATALOG_DESCRIPTION_MD,
@@ -135,11 +149,21 @@ _SCHEMA_EXAMPLE_QUERIES = (
 # classifying keys (domain/category/topic) are BARE, not vgi.-namespaced.
 _SCHEMA_TAGS = {
     "vgi.title": "Sigma — main",
-    "vgi.keywords": (
-        "sigma, sigma_match, sigma_check, sigma_rule_info, sigma_match_fields, detection, "
-        "SIEM, threat detection, log analysis, detection-as-code, MITRE ATT&CK"
+    "vgi.keywords": json.dumps(
+        [
+            "sigma",
+            "sigma_match",
+            "sigma_check",
+            "sigma_rule_info",
+            "sigma_match_fields",
+            "detection",
+            "SIEM",
+            "threat detection",
+            "log analysis",
+            "detection-as-code",
+            "MITRE ATT&CK",
+        ]
     ),
-    "vgi.source_url": "https://github.com/Query-farm/vgi-sigma/blob/main/sigma_worker.py",
     "vgi.doc_llm": _MAIN_DESCRIPTION_LLM,
     "vgi.doc_md": _MAIN_DESCRIPTION_MD,
     "vgi.example_queries": _SCHEMA_EXAMPLE_QUERIES,

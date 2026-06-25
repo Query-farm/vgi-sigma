@@ -139,6 +139,7 @@ jobs:
         with:
           location: "uv run --no-sync --python 3.13 sigma_worker.py"
           fail-on: info
+          version: "0.37.0"
 
   lint:
     name: Lint
