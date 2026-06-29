@@ -61,6 +61,7 @@ _CATALOG_DESCRIPTION_LLM = (
 
 _CATALOG_DESCRIPTION_MD = (
     "# Sigma Detection Rules in SQL\n\n"
+    "![Sigma logo](https://raw.githubusercontent.com/SigmaHQ/sigma/master/images/Sigma_0.3.png)\n\n"
     "Run [Sigma](https://sigmahq.io) detection rules — the open, vendor-neutral standard for "
     "**detection-as-code** — directly over your log and event tables in SQL, powered by "
     "[pySigma](https://github.com/SigmaHQ/pySigma).\n\n"
