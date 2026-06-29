@@ -67,7 +67,7 @@ _CATALOG_DESCRIPTION_MD = (
     "[pySigma](https://github.com/SigmaHQ/pySigma).\n\n"
     "This extension brings SIEM-style threat detection and threat hunting into DuckDB. If you have "
     "events as rows (Windows Security logs, EDR telemetry, cloud audit trails, web/proxy logs, or "
-    "any JSON records), you can take a Sigma rule and ask, per row, \"does this event match?\" — "
+    'any JSON records), you can take a Sigma rule and ask, per row, "does this event match?" — '
     "without exporting data to a separate SIEM. It is built for detection engineers, threat "
     "hunters, incident responders, and data engineers who want to test, triage, and measure "
     "detection coverage where the data already lives. It is a defensive security tool and part of "
