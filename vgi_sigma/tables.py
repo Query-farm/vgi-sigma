@@ -124,6 +124,7 @@ class SigmaRuleInfoFunction(TableFunctionGenerator[_RuleArg]):
                 "detection-as-code",
             ),
         ) | {
+            "vgi.category": "introspection",  # VGI409/411: primary category in sigma.main's registry
             "vgi.result_columns_md": (
                 "| column | type | description |\n"
                 "|---|---|---|\n"
@@ -250,6 +251,7 @@ class SigmaMatchFieldsFunction(TableFunctionGenerator[_RuleArg]):
                 "detection-as-code",
             ),
         ) | {
+            "vgi.category": "introspection",  # VGI409/411: primary category in sigma.main's registry
             "vgi.result_columns_md": (
                 "| column | type | description |\n"
                 "|---|---|---|\n"
@@ -260,7 +262,7 @@ class SigmaMatchFieldsFunction(TableFunctionGenerator[_RuleArg]):
             FunctionExample(
                 sql=(
                     "SELECT field FROM sigma.sigma_match_fields("
-                    "'logsource: {service: security}\\ndetection:\\n  sel:\\n"
+                    "'title: Failed Network Logon\\nlogsource: {service: security}\\ndetection:\\n  sel:\\n"
                     "    EventID: 4625\\n    LogonType: 3\\n  condition: sel')"
                 ),
                 description="List the fields a rule keys on (-> EventID, LogonType)",

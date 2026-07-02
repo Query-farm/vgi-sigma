@@ -145,12 +145,15 @@ class SigmaMatchFunction(ScalarFunction):
                 "EDR",
                 "security",
             ),
-        ) | {"vgi.executable_examples": _MATCH_EXECUTABLE_EXAMPLES}
+        ) | {
+            "vgi.executable_examples": _MATCH_EXECUTABLE_EXAMPLES,
+            "vgi.category": "detection",  # VGI409/411: primary category in sigma.main's registry
+        }
         examples = [
             FunctionExample(
                 sql=(
                     'SELECT sigma.sigma_match(\'{"EventID": 4625, "LogonType": 3}\', '
-                    "'logsource: {service: security}\\ndetection:\\n  selection:\\n"
+                    "'title: Failed Network Logon\\nlogsource: {service: security}\\ndetection:\\n  selection:\\n"
                     "    EventID: 4625\\n  condition: selection')"
                 ),
                 description="Does an event match a Sigma rule? (-> true)",
@@ -238,11 +241,11 @@ class SigmaCheckFunction(ScalarFunction):
                 "detection-as-code",
                 "security",
             ),
-        )
+        ) | {"vgi.category": "validation"}  # VGI409/411: primary category in sigma.main's registry
         examples = [
             FunctionExample(
                 sql=(
-                    "SELECT sigma.sigma_check('logsource: {service: security}\\n"
+                    "SELECT sigma.sigma_check('title: Failed Logon\\nlogsource: {service: security}\\n"
                     "detection:\\n  selection:\\n    EventID: 4625\\n  condition: selection')"
                 ),
                 description="Validate a Sigma rule (-> true)",

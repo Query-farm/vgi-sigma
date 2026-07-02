@@ -10,3 +10,4 @@ duckdb_unittest_tempdir/
 .cache/
 *.coverage
 .coverage
+.vgi-*-cache.json
