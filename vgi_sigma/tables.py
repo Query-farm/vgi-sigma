@@ -15,6 +15,7 @@ introspection helpers run against a known rule, not a per-row scan).
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Annotated, ClassVar
 
@@ -100,10 +101,9 @@ class SigmaRuleInfoFunction(TableFunctionGenerator[_RuleArg]):
                 "Returns one row of header metadata for a Sigma rule -- the human-facing fields "
                 "you would show in a rule catalog or triage view.\n\n"
                 "## Usage\n\n"
-                "```sql\n"
-                "SELECT title, level FROM sigma.sigma_rule_info(:rule);\n"
-                "SELECT UNNEST(tags) AS attack FROM sigma.sigma_rule_info(:rule);\n"
-                "```\n\n"
+                "Pass a rule and project the header columns you need (`title`, `level`, ...), or "
+                "expand the `tags` list with `UNNEST` to map MITRE ATT&CK coverage. Fully "
+                "runnable, catalog-qualified queries are attached as example queries.\n\n"
                 "## Notes\n\n"
                 "- One row per rule; a NULL rule yields no rows.\n"
                 "- A malformed rule raises a clear parse error.\n"
@@ -125,33 +125,43 @@ class SigmaRuleInfoFunction(TableFunctionGenerator[_RuleArg]):
             ),
         ) | {
             "vgi.category": "introspection",  # VGI409/411: primary category in sigma.main's registry
-            "vgi.result_columns_md": (
-                "| column | type | description |\n"
-                "|---|---|---|\n"
-                "| `title` | VARCHAR | Rule title. |\n"
-                "| `id` | VARCHAR | Rule UUID (the `id` field). |\n"
-                "| `level` | VARCHAR | Severity: `informational`/`low`/`medium`/`high`/`critical`. |\n"
-                "| `status` | VARCHAR | Lifecycle status: `stable`/`test`/`experimental`/… |\n"
-                "| `description` | VARCHAR | Human-readable description. |\n"
-                "| `product` | VARCHAR | logsource product, e.g. `windows`. |\n"
-                "| `service` | VARCHAR | logsource service, e.g. `security`. |\n"
-                "| `tags` | VARCHAR[] | Rule tags, e.g. `attack.t1110`. |"
+            # VGI307/VGI414: the static result schema, as the structured tag that
+            # replaced the retired vgi.result_columns_md. Mirrors _RULE_INFO_SCHEMA.
+            "vgi.result_columns_schema": json.dumps(
+                [
+                    {"name": "title", "type": "VARCHAR", "description": "Rule title."},
+                    {"name": "id", "type": "VARCHAR", "description": "Rule UUID (the `id` field)."},
+                    {
+                        "name": "level",
+                        "type": "VARCHAR",
+                        "description": "Severity: informational, low, medium, high, or critical.",
+                    },
+                    {
+                        "name": "status",
+                        "type": "VARCHAR",
+                        "description": "Lifecycle status: stable, test, experimental, and so on.",
+                    },
+                    {"name": "description", "type": "VARCHAR", "description": "Human-readable description."},
+                    {"name": "product", "type": "VARCHAR", "description": "logsource product, e.g. windows."},
+                    {"name": "service", "type": "VARCHAR", "description": "logsource service, e.g. security."},
+                    {"name": "tags", "type": "VARCHAR[]", "description": "Rule tags, e.g. attack.t1110."},
+                ]
             ),
         }
         examples = [
             FunctionExample(
                 sql=(
-                    "SELECT title, level FROM sigma.sigma_rule_info("
-                    "'title: T\\nlevel: high\\nlogsource: {service: security}\\n"
-                    "detection:\\n  sel:\\n    EventID: 1\\n  condition: sel')"
+                    "SELECT title, level FROM sigma.main.sigma_rule_info("
+                    "'{title: T, level: high, logsource: {service: security}, "
+                    "detection: {sel: {EventID: 1}, condition: sel}}')"
                 ),
                 description="Read a rule's title and severity",
             ),
             FunctionExample(
                 sql=(
-                    "SELECT UNNEST(tags) AS tag FROM sigma.sigma_rule_info("
-                    "'title: T\\ntags: [attack.t1110]\\nlogsource: {service: security}\\n"
-                    "detection:\\n  sel:\\n    EventID: 1\\n  condition: sel')"
+                    "SELECT UNNEST(tags) AS tag FROM sigma.main.sigma_rule_info("
+                    "'{title: T, tags: [attack.t1110], logsource: {service: security}, "
+                    "detection: {sel: {EventID: 1}, condition: sel}}')"
                 ),
                 description="Expand a rule's MITRE ATT&CK tags",
             ),
@@ -231,9 +241,9 @@ class SigmaMatchFieldsFunction(TableFunctionGenerator[_RuleArg]):
                 "Lists the event fields a Sigma rule references, one per row -- the input for "
                 "index and coverage planning.\n\n"
                 "## Usage\n\n"
-                "```sql\n"
-                "SELECT field FROM sigma.sigma_match_fields(:rule);\n"
-                "```\n\n"
+                "Pass a rule to get the distinct event field names it keys on, so you know which "
+                "log columns must be present and indexed. Fully runnable, catalog-qualified "
+                "queries are attached as example queries.\n\n"
                 "## Notes\n\n"
                 "- One row per referenced field; a NULL rule yields no rows.\n"
                 "- A malformed rule raises a clear parse error.\n"
@@ -252,18 +262,24 @@ class SigmaMatchFieldsFunction(TableFunctionGenerator[_RuleArg]):
             ),
         ) | {
             "vgi.category": "introspection",  # VGI409/411: primary category in sigma.main's registry
-            "vgi.result_columns_md": (
-                "| column | type | description |\n"
-                "|---|---|---|\n"
-                "| `field` | VARCHAR | An event field the rule references, e.g. `EventID`. |"
+            # VGI307/VGI414: the static result schema, as the structured tag that
+            # replaced the retired vgi.result_columns_md. Mirrors _MATCH_FIELDS_SCHEMA.
+            "vgi.result_columns_schema": json.dumps(
+                [
+                    {
+                        "name": "field",
+                        "type": "VARCHAR",
+                        "description": "An event field the rule references, e.g. EventID.",
+                    },
+                ]
             ),
         }
         examples = [
             FunctionExample(
                 sql=(
-                    "SELECT field FROM sigma.sigma_match_fields("
-                    "'title: Failed Network Logon\\nlogsource: {service: security}\\ndetection:\\n  sel:\\n"
-                    "    EventID: 4625\\n    LogonType: 3\\n  condition: sel')"
+                    "SELECT field FROM sigma.main.sigma_match_fields("
+                    "'{title: Failed Network Logon, logsource: {service: security}, "
+                    "detection: {sel: {EventID: 4625, LogonType: 3}, condition: sel}}')"
                 ),
                 description="List the fields a rule keys on (-> EventID, LogonType)",
             ),

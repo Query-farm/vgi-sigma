@@ -36,20 +36,18 @@ from vgi.scalar_function import ScalarFunction
 from . import engine, meta
 
 # A reusable brute-force rule (failed network logons), with the non-empty
-# `logsource:` block pySigma requires. DuckDB single-quoted string literals.
+# `logsource:` block pySigma requires. Written as single-line YAML flow syntax so
+# it sits cleanly inside a single-quoted DuckDB string literal -- no newline
+# escaping (`\n` in a plain single-quoted literal is NOT a newline; only `E'...'`
+# expands it, and flow syntax sidesteps the issue entirely).
 _BRUTE_RULE_SQL = (
-    "'title: Failed Network Logon\n"
-    "logsource: {service: security}\n"
-    "detection:\n"
-    "  selection:\n"
-    "    EventID: 4625\n"
-    "    LogonType: 3\n"
-    "  condition: selection'"
+    "'{title: Failed Network Logon, logsource: {service: security}, "
+    "detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}'"
 )
 
-# VGI509: a JSON list of guaranteed-runnable, catalog-qualified examples. Each
-# `sql` is self-contained and re-runnable against an attached `sigma` worker. We
-# deliberately omit `expected_result` -- the linter only needs each query to
+# VGI509: a JSON list of guaranteed-runnable, fully catalog-qualified examples.
+# Each `sql` is self-contained and re-runnable against an attached `sigma` worker.
+# We deliberately omit `expected_result` -- the linter only needs each query to
 # execute cleanly.
 _MATCH_EXECUTABLE_EXAMPLES = json.dumps(
     [
@@ -58,12 +56,22 @@ _MATCH_EXECUTABLE_EXAMPLES = json.dumps(
                 "A failed-logon event (EventID 4625, network logon type 3) matches a brute-force detection rule."
             ),
             "sql": (
-                'SELECT sigma.sigma_match(\'{"EventID": 4625, "LogonType": 3}\', ' + _BRUTE_RULE_SQL + ") AS matched"
+                'SELECT sigma.main.sigma_match(\'{"EventID": 4625, "LogonType": 3}\', '
+                + _BRUTE_RULE_SQL
+                + ") AS matched"
             ),
         },
         {
             "description": "An unrelated process-creation event does not match the same rule.",
-            "sql": ("SELECT sigma.sigma_match('{\"EventID\": 1}', " + _BRUTE_RULE_SQL + ") AS matched"),
+            "sql": ("SELECT sigma.main.sigma_match('{\"EventID\": 1}', " + _BRUTE_RULE_SQL + ") AS matched"),
+        },
+        {
+            "description": ("Apply the matcher per row over an inline log table -- the headline hunting pattern."),
+            "sql": (
+                "SELECT event, sigma.main.sigma_match(event, " + _BRUTE_RULE_SQL + ") AS matched "
+                'FROM (VALUES (\'{"EventID": 4625, "LogonType": 3}\'), '
+                "('{\"EventID\": 1}')) AS logs(event) ORDER BY matched"
+            ),
         },
     ]
 )
@@ -116,10 +124,9 @@ class SigmaMatchFunction(ScalarFunction):
                 "Returns `true` when a JSON event matches a Sigma detection rule. It is the core "
                 "matcher for SIEM-style threat detection directly in SQL.\n\n"
                 "## Usage\n\n"
-                "```sql\n"
-                "SELECT * FROM logs\n"
-                "WHERE sigma.sigma_match(to_json(logs), :rule);\n"
-                "```\n\n"
+                "Apply it per row over a log column -- typically in a `WHERE` clause against "
+                "`to_json(row)` -- to keep only the events a rule matches. Fully runnable, "
+                "catalog-qualified queries are attached as example queries.\n\n"
                 "## Arguments\n\n"
                 "| name | type | description |\n"
                 "|---|---|---|\n"
@@ -152,9 +159,9 @@ class SigmaMatchFunction(ScalarFunction):
         examples = [
             FunctionExample(
                 sql=(
-                    'SELECT sigma.sigma_match(\'{"EventID": 4625, "LogonType": 3}\', '
-                    "'title: Failed Network Logon\\nlogsource: {service: security}\\ndetection:\\n  selection:\\n"
-                    "    EventID: 4625\\n  condition: selection')"
+                    'SELECT sigma.main.sigma_match(\'{"EventID": 4625, "LogonType": 3}\', '
+                    "'{title: Failed Network Logon, logsource: {service: security}, "
+                    "detection: {selection: {EventID: 4625}, condition: selection}}')"
                 ),
                 description="Does an event match a Sigma rule? (-> true)",
             ),
@@ -215,11 +222,9 @@ class SigmaCheckFunction(ScalarFunction):
                 "A non-raising validator: returns `true` when a Sigma rule parses and compiles "
                 "with only supported features, `false` otherwise.\n\n"
                 "## Usage\n\n"
-                "```sql\n"
-                "SELECT rule_id\n"
-                "FROM candidate_rules\n"
-                "WHERE NOT sigma.sigma_check(rule_text);  -- find rules we cannot evaluate\n"
-                "```\n\n"
+                "Run it over a column of candidate rules to keep (or reject) the ones this "
+                "engine can evaluate before feeding them to `sigma_match`. Fully runnable, "
+                "catalog-qualified queries are attached as example queries.\n\n"
                 "## Arguments\n\n"
                 "| name | type | description |\n"
                 "|---|---|---|\n"
@@ -245,13 +250,13 @@ class SigmaCheckFunction(ScalarFunction):
         examples = [
             FunctionExample(
                 sql=(
-                    "SELECT sigma.sigma_check('title: Failed Logon\\nlogsource: {service: security}\\n"
-                    "detection:\\n  selection:\\n    EventID: 4625\\n  condition: selection')"
+                    "SELECT sigma.main.sigma_check('{title: Failed Logon, logsource: {service: security}, "
+                    "detection: {selection: {EventID: 4625}, condition: selection}}')"
                 ),
                 description="Validate a Sigma rule (-> true)",
             ),
             FunctionExample(
-                sql="SELECT sigma.sigma_check('not: a: valid: rule')",
+                sql="SELECT sigma.main.sigma_check('not a valid rule')",
                 description="Invalid rule (-> false)",
             ),
         ]

@@ -1,7 +1,7 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#     "vgi-python[http]>=0.8.5",
+#     "vgi-python[http]>=0.15.0",
 #     "pysigma>=0.11",
 # ]
 # ///
@@ -43,8 +43,9 @@ from __future__ import annotations
 import json
 
 from vgi import Worker
-from vgi.catalog import Catalog, Schema
+from vgi.catalog import Catalog, Schema, View
 
+from vgi_sigma import engine
 from vgi_sigma.scalars import SCALAR_FUNCTIONS
 from vgi_sigma.tables import TABLE_FUNCTIONS
 
@@ -93,10 +94,11 @@ _CATALOG_DESCRIPTION_MD = (
     "catalog also lets you validate a rule library before you trust it, and introspect a rule's "
     "header metadata and referenced fields for triage, index planning, and coverage analysis — so "
     "a single attached worker covers the detect / validate / plan loop of detection engineering.\n\n"
-    "A typical hunt filters a log table with the matcher in a `WHERE` clause:\n\n"
-    "```sql\n"
-    "SELECT * FROM logs WHERE sigma.sigma_match(to_json(logs), :rule);\n"
-    "```\n\n"
+    "A typical hunt applies a matcher predicate per row over a log table (for example in a "
+    "`WHERE` clause against `to_json(row)`), while separate helpers validate that a rule library "
+    "compiles and introspect rule metadata and referenced fields for planning. A browsable "
+    "discovery table lists the field modifiers the evaluator supports. List the schema to see "
+    "each function with its own documentation and fully runnable, catalog-qualified examples.\n\n"
     "Learn more from the [Sigma documentation](https://sigmahq.io/docs/), the "
     "[pySigma reference docs](https://sigmahq-pysigma.readthedocs.io), and the "
     "[pySigma source repository](https://github.com/SigmaHQ/pySigma)."
@@ -131,11 +133,12 @@ _MAIN_DESCRIPTION_MD = (
     "- **Plan** — introspect a rule's header metadata and the fields it references for triage, "
     "index planning, and coverage analysis.\n\n"
     "List the schema to browse the individual functions; each ships its own documentation and "
-    "runnable examples.\n\n"
+    "runnable examples. A browsable discovery table lists the Sigma field modifiers the "
+    "evaluator understands, so you can review them before authoring a rule.\n\n"
     "## Typical use\n\n"
-    "```sql\n"
-    "SELECT * FROM logs WHERE sigma.sigma_match(to_json(logs), :rule);\n"
-    "```\n\n"
+    "Apply a matcher predicate per row over a log table (typically in a `WHERE` clause against "
+    "`to_json(row)`), and use the validation and introspection helpers to check a rule library "
+    "and plan coverage. Every attached example query is fully catalog-qualified and runnable.\n\n"
     "Every example rule carries a non-empty `logsource:` block, which pySigma requires."
 )
 
@@ -155,10 +158,9 @@ _AGENT_TEST_TASKS = json.dumps(
                 "EventID 4625 and LogonType 3. Return a single boolean value."
             ),
             "reference_sql": (
-                'SELECT sigma.sigma_match(\'{"EventID": 4625, "LogonType": 3}\', '
-                "'title: Failed Network Logon\nlogsource: {service: security}\n"
-                "detection:\n  selection:\n    EventID: 4625\n    LogonType: 3\n"
-                "  condition: selection') AS matched"
+                'SELECT sigma.main.sigma_match(\'{"EventID": 4625, "LogonType": 3}\', '
+                "'{title: Failed Network Logon, logsource: {service: security}, "
+                "detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}') AS matched"
             ),
             "ignore_column_names": True,
         },
@@ -171,9 +173,9 @@ _AGENT_TEST_TASKS = json.dumps(
                 "4625 with condition 'selection'. Return a single boolean value."
             ),
             "reference_sql": (
-                "SELECT sigma.sigma_check('title: Failed Logon\n"
-                "logsource: {service: security}\n"
-                "detection:\n  selection:\n    EventID: 4625\n  condition: selection') AS valid"
+                "SELECT sigma.main.sigma_check("
+                "'{title: Failed Logon, logsource: {service: security}, "
+                "detection: {selection: {EventID: 4625}, condition: selection}}') AS valid"
             ),
             "ignore_column_names": True,
         },
@@ -185,9 +187,9 @@ _AGENT_TEST_TASKS = json.dumps(
                 "and a selection matching EventID 4625 with condition 'selection'."
             ),
             "reference_sql": (
-                "SELECT title, level FROM sigma.sigma_rule_info("
-                "'title: Failed Logon\nlevel: high\nlogsource: {service: security}\n"
-                "detection:\n  selection:\n    EventID: 4625\n  condition: selection')"
+                "SELECT title, level FROM sigma.main.sigma_rule_info("
+                "'{title: Failed Logon, level: high, logsource: {service: security}, "
+                "detection: {selection: {EventID: 4625}, condition: selection}}')"
             ),
             "ignore_column_names": True,
         },
@@ -200,12 +202,23 @@ _AGENT_TEST_TASKS = json.dumps(
                 "LogonType 3, with condition 'selection'. Return the field names."
             ),
             "reference_sql": (
-                "SELECT field FROM sigma.sigma_match_fields("
-                "'title: Failed Network Logon\nlogsource: {service: security}\n"
-                "detection:\n  selection:\n    EventID: 4625\n    LogonType: 3\n"
-                "  condition: selection')"
+                "SELECT field FROM sigma.main.sigma_match_fields("
+                "'{title: Failed Network Logon, logsource: {service: security}, "
+                "detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}')"
             ),
             "unordered": True,
+            "ignore_column_names": True,
+        },
+        {
+            "name": "count-supported-modifiers",
+            "prompt": (
+                "The worker publishes a browsable discovery table listing every Sigma field "
+                "modifier its evaluator understands. Using that table, how many distinct "
+                "modifiers of kind 'affix' does the engine support? Return a single number."
+            ),
+            "reference_sql": (
+                "SELECT count(*) AS affix_modifiers FROM sigma.main.supported_modifiers WHERE kind = 'affix'"
+            ),
             "ignore_column_names": True,
         },
     ]
@@ -240,17 +253,23 @@ _CATALOG_TAGS = {
     "vgi.agent_test_tasks": _AGENT_TEST_TASKS,
 }
 
-# VGI506: representative, catalog-qualified example queries for the schema.
+# VGI506: representative, fully catalog-qualified example queries for the schema.
+# Each rule is written as single-line YAML flow syntax so it lives cleanly inside
+# a single-quoted SQL string literal (no newline escaping) and runs as-is.
 _SCHEMA_EXAMPLE_QUERIES = (
-    'SELECT sigma.sigma_match(\'{"EventID": 4625, "LogonType": 3}\', '
-    "'title: Failed Network Logon\nlogsource: {service: security}\ndetection:\n  selection:\n    EventID: 4625\n"
-    "  condition: selection');\n"
-    "SELECT sigma.sigma_check('title: Process Create\nlogsource: {service: security}\ndetection:\n  sel:\n"
-    "    EventID: 1\n  condition: sel');\n"
-    "SELECT title, level FROM sigma.sigma_rule_info('title: Failed Logon\nlevel: high\n"
-    "logsource: {service: security}\ndetection:\n  sel:\n    EventID: 4625\n  condition: sel');\n"
-    "SELECT field FROM sigma.sigma_match_fields('title: Failed Network Logon\nlogsource: {service: security}\n"
-    "detection:\n  sel:\n    EventID: 4625\n    LogonType: 3\n  condition: sel');"
+    'SELECT sigma.main.sigma_match(\'{"EventID": 4625, "LogonType": 3}\', '
+    "'{title: Failed Network Logon, logsource: {service: security}, "
+    "detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}') AS matched;\n"
+    "SELECT sigma.main.sigma_check("
+    "'{title: Process Create, logsource: {service: security}, "
+    "detection: {sel: {EventID: 1}, condition: sel}}') AS valid;\n"
+    "SELECT title, level FROM sigma.main.sigma_rule_info("
+    "'{title: Failed Logon, level: high, logsource: {service: security}, "
+    "detection: {sel: {EventID: 4625}, condition: sel}}');\n"
+    "SELECT field FROM sigma.main.sigma_match_fields("
+    "'{title: Failed Network Logon, logsource: {service: security}, "
+    "detection: {sel: {EventID: 4625, LogonType: 3}, condition: sel}}') ORDER BY field;\n"
+    "SELECT modifier, kind FROM sigma.main.supported_modifiers ORDER BY modifier;"
 )
 
 # VGI413: ordered navigation registry for the schema. Each object declares one
@@ -275,6 +294,14 @@ _SCHEMA_CATEGORIES = json.dumps(
             "title": "Rule Introspection",
             "description": "Read a rule's header metadata and the event fields it references for triage and planning.",
             "keywords": ["metadata", "fields", "triage", "coverage", "index planning"],
+        },
+        {
+            "name": "reference",
+            "title": "Engine Reference",
+            "description": (
+                "Browsable reference tables describing evaluator capabilities, e.g. the Sigma field modifiers."
+            ),
+            "keywords": ["reference", "modifiers", "supported features", "discovery", "capabilities"],
         },
     ]
 )
@@ -309,6 +336,109 @@ _SCHEMA_TAGS = {
     "topic": "sigma-detection-rules",
 }
 
+
+def _modifiers_values_sql() -> str:
+    """Build a self-contained ``VALUES`` relation of every supported modifier.
+
+    Rows come from :func:`engine.supported_modifiers` -- the engine's own
+    registry -- so the browsable view and the evaluator's behaviour can never
+    drift. Emitting literal rows keeps the view a genuine, credential-free
+    browsable relation: it resolves without parsing or evaluating any rule.
+    """
+    rows = ",\n        ".join(
+        "('{}', '{}', '{}')".format(mod, kind, desc.replace("'", "''"))
+        for mod, kind, desc in engine.supported_modifiers()
+    )
+    return f"SELECT modifier, kind, description FROM (VALUES\n        {rows}\n    ) AS t(modifier, kind, description)"
+
+
+# VGI146: a genuinely browsable relation (not a parameterless table function,
+# which would trip VGI145) so an agent can discover the engine's capabilities
+# without first guessing rule arguments. Backed by a literal ``VALUES`` relation
+# generated from `engine.supported_modifiers()`, so it scans credential-free
+# (clearing VGI911) and stays in lockstep with the evaluator.
+_SUPPORTED_MODIFIERS_VIEW = View(
+    name="supported_modifiers",
+    definition=_modifiers_values_sql(),
+    comment="Every Sigma field modifier the evaluator implements, one per row (discovery table).",
+    column_comments={
+        "modifier": (
+            "The modifier keyword as written in a rule (e.g. `contains`); `plain` is the "
+            "default, modifier-free comparison."
+        ),
+        "kind": "Modifier family: `equality`, `affix`, `regex`, or `combiner`.",
+        "description": "What the modifier does when matching an event value.",
+    },
+    tags={
+        "vgi.title": "Supported Sigma Modifiers",
+        "vgi.doc_llm": (
+            "A ready-to-scan **discovery table** of every Sigma field modifier this worker's "
+            "evaluator understands, so you can check what a rule may use before authoring or "
+            "trusting it. Browse the view directly (no arguments): the `modifier` column holds "
+            "the keyword written after a pipe in a rule field (e.g. `CommandLine|contains`), "
+            "with the `plain` row standing for the default modifier-free comparison; `kind` "
+            "groups them into `equality`, `affix`, `startswith`/`endswith` style, `regex`, and "
+            "the `all` `combiner`; and `description` explains the matching semantics. A rule "
+            "that uses any modifier absent from this table is rejected by `sigma_check` and "
+            "raises from `sigma_match`, so this is the authoritative capability list. Rows are "
+            "generated from the evaluator's own registry, so the view can never drift from "
+            "actual behaviour. Runnable browse and filter queries are attached as examples."
+        ),
+        "vgi.doc_md": (
+            "# supported_modifiers (view)\n\n"
+            "Every Sigma field modifier the evaluator implements, as a plain browsable table.\n\n"
+            "The `modifier` column is the keyword written after a pipe on a rule field "
+            "(`CommandLine|contains`, `Image|endswith`); the `plain` row is the default "
+            "modifier-free comparison. The `kind` column groups modifiers into `equality`, "
+            "`affix`, `regex`, and `combiner` families, and `description` explains the matching "
+            "semantics. A rule using any modifier not listed here is rejected by `sigma_check` "
+            "and raises from `sigma_match`, so this view is the authoritative capability list. "
+            "The rows are generated from the evaluator's own registry, so they stay in lockstep "
+            "with behaviour. See the attached example queries to browse and filter it."
+        ),
+        "vgi.keywords": json.dumps(
+            [
+                "supported modifiers",
+                "sigma modifiers",
+                "field modifiers",
+                "contains",
+                "startswith",
+                "endswith",
+                "regex",
+                "capabilities",
+                "discovery",
+                "supported features",
+            ]
+        ),
+        "vgi.category": "reference",  # VGI409/411: primary category in sigma.main's registry
+        # VGI123 classifying tags (bare keys for faceting/discovery).
+        "domain": "security",
+        "category": "detection",
+        "topic": "sigma-modifiers",
+        # VGI502: object/view-level example_queries is a JSON array of {description, sql}.
+        "vgi.example_queries": json.dumps(
+            [
+                {
+                    "description": "List every supported Sigma field modifier and its family.",
+                    "sql": "SELECT modifier, kind FROM sigma.main.supported_modifiers ORDER BY modifier",
+                },
+                {
+                    "description": "Show only the affix modifiers (contains / startswith / endswith).",
+                    "sql": (
+                        "SELECT modifier, description FROM sigma.main.supported_modifiers "
+                        "WHERE kind = 'affix' ORDER BY modifier"
+                    ),
+                },
+                {
+                    "description": "Is the regular-expression modifier supported?",
+                    "sql": "SELECT count(*) > 0 AS has_regex FROM sigma.main.supported_modifiers WHERE modifier = 're'",
+                },
+            ]
+        ),
+    },
+)
+
+
 _SIGMA_CATALOG = Catalog(
     name="sigma",
     default_schema="main",
@@ -320,6 +450,7 @@ _SIGMA_CATALOG = Catalog(
             name="main",
             comment="Evaluate, validate, and introspect Sigma detection rules over log/event rows",
             tags=_SCHEMA_TAGS,
+            views=[_SUPPORTED_MODIFIERS_VIEW],
             functions=list(_FUNCTIONS),
         ),
     ],

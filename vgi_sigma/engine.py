@@ -107,6 +107,42 @@ _MOD_ALL = "SigmaAllModifier"
 _MOD_RE = "SigmaRegularExpressionModifier"
 
 
+# Public registry of the Sigma field modifiers this engine implements, exposed
+# as the browsable ``supported_modifiers`` discovery view in the worker. Keyed by
+# the modifier keyword as written in a rule (``fieldname|contains: ...``); the
+# ``plain`` row is the default, modifier-free equality comparison. Sourced here,
+# next to the internal modifier maps, so the discovery view and the evaluator can
+# never drift apart.
+_MODIFIER_REGISTRY: dict[str, tuple[str, str]] = {
+    "plain": (
+        "equality",
+        "Default modifier-free comparison: case-insensitive equality for strings, "
+        "by-value for numbers and booleans; supports * and ? wildcards.",
+    ),
+    "contains": ("affix", "Case-insensitive substring match anywhere within the event value."),
+    "startswith": ("affix", "Case-insensitive match anchored at the start of the event value."),
+    "endswith": ("affix", "Case-insensitive match anchored at the end of the event value."),
+    "re": ("regex", "Match the event value against a regular expression (Python re.search semantics)."),
+    "all": ("combiner", "Require every listed value to match the field (AND) instead of the default OR."),
+}
+
+
+def supported_modifiers() -> list[tuple[str, str, str]]:
+    """The Sigma field modifiers this engine implements, as discovery-view rows.
+
+    Derived from the internal modifier maps (:data:`_SUPPORTED_AFFIX_MODIFIERS`,
+    :data:`_MOD_RE`, :data:`_MOD_ALL`) so the browsable ``supported_modifiers``
+    view and the evaluator's actual behaviour can never drift apart.
+
+    Returns:
+        One ``(modifier, kind, description)`` tuple per supported modifier, in a
+        stable order: plain equality first, then the affix modifiers, then the
+        regex and combiner modifiers.
+    """
+    names = ["plain", *_SUPPORTED_AFFIX_MODIFIERS.values(), "re", "all"]
+    return [(name, _MODIFIER_REGISTRY[name][0], _MODIFIER_REGISTRY[name][1]) for name in names]
+
+
 @dataclass(frozen=True, slots=True)
 class CompiledRule:
     """A parsed, validated Sigma rule ready to evaluate against events.
