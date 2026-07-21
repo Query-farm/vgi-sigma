@@ -10,8 +10,11 @@
 # files under test/sql/. haybarn-unittest is a uv tool:
 #   uv tool install haybarn-unittest   # installs ~/.local/bin/haybarn-unittest
 
-# Worker command DuckDB uses for ATTACH (overridable).
-WORKER_STDIO    ?= uv run --python 3.13 sigma_worker.py
+# Worker command DuckDB uses for ATTACH (overridable). Drive the worker through
+# the project venv python (populated by `uv sync`), NOT `uv run sigma_worker.py`:
+# a PEP 723 script env resolves the SDK independently of the lockfile, so the
+# venv python guarantees the exact locked vgi-python the tests expect.
+WORKER_STDIO    ?= .venv/bin/python sigma_worker.py
 
 # haybarn-unittest lives in the uv tools bin; keep it on PATH.
 HAYBARN_BIN     ?= $(HOME)/.local/bin

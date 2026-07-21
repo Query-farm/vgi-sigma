@@ -102,17 +102,18 @@ jobs:
       - name: Resolve runner + worker paths
         run: |
           # Absolute paths: run-integration.sh cd's into a staging dir before
-          # invoking the runner, so relative paths would not resolve. The worker
-          # is a repo-root PEP 723 script (no console-script); `uv run` reads its
-          # inline deps and resolves them from PyPI, so an absolute script path
-          # spawns correctly regardless of cwd — exactly how DuckDB ATTACH and
-          # the pytest fixture drive it. WORKER_CMD is used directly as the
-          # stdio LOCATION for subprocess, and as the process the harness boots
-          # for --http / --unix.
+          # invoking the runner, so relative paths would not resolve. Drive the
+          # worker through the project venv python (populated by the preceding
+          # `uv sync --frozen --extra http`) rather than `uv run sigma_worker.py`:
+          # a PEP 723 script env resolves/caches the SDK independently of the
+          # lockfile, so the venv python guarantees the exact locked vgi-python.
+          # Both paths are absolute so it spawns correctly regardless of cwd.
+          # WORKER_CMD is used directly as the stdio LOCATION for subprocess, and
+          # as the process the harness boots for --http / --unix.
           UNITTEST="$PWD/$(find hb -name 'haybarn-unittest' -type f | head -1)"
           chmod +x "$UNITTEST"
           echo "HAYBARN_UNITTEST=$UNITTEST" >> "$GITHUB_ENV"
-          echo "WORKER_CMD=uv run --no-sync --python 3.13 $PWD/sigma_worker.py" >> "$GITHUB_ENV"
+          echo "WORKER_CMD=$PWD/.venv/bin/python $PWD/sigma_worker.py" >> "$GITHUB_ENV"
 
       - name: Run extension integration suite (${{ matrix.transport }})
         run: ci/run-integration.sh
@@ -137,7 +138,10 @@ jobs:
       - name: vgi-lint
         uses: Query-farm/vgi-lint-check@v1
         with:
-          location: "uv run --no-sync --python 3.13 sigma_worker.py"
+          # Attach via the project venv python (populated by `uv sync --frozen`),
+          # NOT `uv run sigma_worker.py`: a PEP 723 script env caches a stale SDK
+          # and emits the old catalog schema, producing a false schema mismatch.
+          location: ".venv/bin/python sigma_worker.py"
           fail-on: info
 
   lint:

@@ -147,6 +147,28 @@ class SigmaRuleInfoFunction(TableFunctionGenerator[_RuleArg]):
                     {"name": "tags", "type": "VARCHAR[]", "description": "Rule tags, e.g. attack.t1110."},
                 ]
             ),
+            # VGI515: described example queries ({description, sql}); the native
+            # examples carrier drops descriptions, so this is the described copy.
+            "vgi.example_queries": json.dumps(
+                [
+                    {
+                        "description": "Read a rule's title and severity level from its header.",
+                        "sql": (
+                            "SELECT title, level FROM sigma.main.sigma_rule_info("
+                            "'{title: T, level: high, logsource: {service: security}, "
+                            "detection: {sel: {EventID: 1}, condition: sel}}')"
+                        ),
+                    },
+                    {
+                        "description": "Expand a rule's MITRE ATT&CK tags into one row per tag.",
+                        "sql": (
+                            "SELECT UNNEST(tags) AS tag FROM sigma.main.sigma_rule_info("
+                            "'{title: T, tags: [attack.t1110], logsource: {service: security}, "
+                            "detection: {sel: {EventID: 1}, condition: sel}}')"
+                        ),
+                    },
+                ]
+            ),
         }
         examples = [
             FunctionExample(
@@ -155,7 +177,7 @@ class SigmaRuleInfoFunction(TableFunctionGenerator[_RuleArg]):
                     "'{title: T, level: high, logsource: {service: security}, "
                     "detection: {sel: {EventID: 1}, condition: sel}}')"
                 ),
-                description="Read a rule's title and severity",
+                description="Read a rule's title and severity level from its header.",
             ),
             FunctionExample(
                 sql=(
@@ -163,7 +185,7 @@ class SigmaRuleInfoFunction(TableFunctionGenerator[_RuleArg]):
                     "'{title: T, tags: [attack.t1110], logsource: {service: security}, "
                     "detection: {sel: {EventID: 1}, condition: sel}}')"
                 ),
-                description="Expand a rule's MITRE ATT&CK tags",
+                description="Expand a rule's MITRE ATT&CK tags into one row per tag.",
             ),
         ]
 
@@ -270,6 +292,21 @@ class SigmaMatchFieldsFunction(TableFunctionGenerator[_RuleArg]):
                         "name": "field",
                         "type": "VARCHAR",
                         "description": "An event field the rule references, e.g. EventID.",
+                    },
+                ]
+            ),
+            # VGI515: described example queries ({description, sql}), byte-identical
+            # SQL to the native `examples` below so the linter pairs them and
+            # recovers the descriptions the native examples carrier drops.
+            "vgi.example_queries": json.dumps(
+                [
+                    {
+                        "description": "List the distinct event fields a rule keys on (-> EventID, LogonType).",
+                        "sql": (
+                            "SELECT field FROM sigma.main.sigma_match_fields("
+                            "'{title: Failed Network Logon, logsource: {service: security}, "
+                            "detection: {sel: {EventID: 4625, LogonType: 3}, condition: sel}}')"
+                        ),
                     },
                 ]
             ),

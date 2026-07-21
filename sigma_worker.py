@@ -1,7 +1,7 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#     "vgi-python[http]>=0.15.0",
+#     "vgi-python[http]>=0.16.0",
 #     "pysigma>=0.11",
 # ]
 # ///
@@ -97,8 +97,7 @@ _CATALOG_DESCRIPTION_MD = (
     "A typical hunt applies a matcher predicate per row over a log table (for example in a "
     "`WHERE` clause against `to_json(row)`), while separate helpers validate that a rule library "
     "compiles and introspect rule metadata and referenced fields for planning. A browsable "
-    "discovery table lists the field modifiers the evaluator supports. List the schema to see "
-    "each function with its own documentation and fully runnable, catalog-qualified examples.\n\n"
+    "discovery table lists the field modifiers the evaluator supports.\n\n"
     "Learn more from the [Sigma documentation](https://sigmahq.io/docs/), the "
     "[pySigma reference docs](https://sigmahq-pysigma.readthedocs.io), and the "
     "[pySigma source repository](https://github.com/SigmaHQ/pySigma)."
@@ -113,9 +112,7 @@ _MAIN_DESCRIPTION_LLM = (
     "against a rule to hunt for a known threat, validate that a rule library parses and compiles "
     "before you trust it, and introspect a rule's header metadata and the fields it keys on for "
     "triage, index planning, and MITRE ATT&CK coverage analysis. Matching is the hot path and the "
-    "usual entry point; validation and introspection support it around the edges. Discover the "
-    "specific functions by listing the schema — each carries its own documentation, arguments, "
-    "and worked examples.\n\n"
+    "usual entry point; validation and introspection support it around the edges.\n\n"
     "**Notes.** Every rule must include a non-empty `logsource:` block. Rules compile once per "
     "distinct text (cached), then evaluate per row, so a constant rule over a column is cheap. "
     "Events are supplied as JSON object strings (e.g. from `to_json(row)`)."
@@ -253,23 +250,50 @@ _CATALOG_TAGS = {
     "vgi.agent_test_tasks": _AGENT_TEST_TASKS,
 }
 
-# VGI506: representative, fully catalog-qualified example queries for the schema.
-# Each rule is written as single-line YAML flow syntax so it lives cleanly inside
-# a single-quoted SQL string literal (no newline escaping) and runs as-is.
-_SCHEMA_EXAMPLE_QUERIES = (
-    'SELECT sigma.main.sigma_match(\'{"EventID": 4625, "LogonType": 3}\', '
-    "'{title: Failed Network Logon, logsource: {service: security}, "
-    "detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}') AS matched;\n"
-    "SELECT sigma.main.sigma_check("
-    "'{title: Process Create, logsource: {service: security}, "
-    "detection: {sel: {EventID: 1}, condition: sel}}') AS valid;\n"
-    "SELECT title, level FROM sigma.main.sigma_rule_info("
-    "'{title: Failed Logon, level: high, logsource: {service: security}, "
-    "detection: {sel: {EventID: 4625}, condition: sel}}');\n"
-    "SELECT field FROM sigma.main.sigma_match_fields("
-    "'{title: Failed Network Logon, logsource: {service: security}, "
-    "detection: {sel: {EventID: 4625, LogonType: 3}, condition: sel}}') ORDER BY field;\n"
-    "SELECT modifier, kind FROM sigma.main.supported_modifiers ORDER BY modifier;"
+# VGI506/VGI515: representative, fully catalog-qualified example queries for the
+# schema, as a JSON list of {description, sql} so each carries a human-readable
+# description (the native examples carrier drops descriptions). Each rule is
+# written as single-line YAML flow syntax so it lives cleanly inside a
+# single-quoted SQL string literal (no newline escaping) and runs as-is.
+_SCHEMA_EXAMPLE_QUERIES = json.dumps(
+    [
+        {
+            "description": "Does a failed-network-logon event match a brute-force detection rule?",
+            "sql": (
+                'SELECT sigma.main.sigma_match(\'{"EventID": 4625, "LogonType": 3}\', '
+                "'{title: Failed Network Logon, logsource: {service: security}, "
+                "detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}') AS matched"
+            ),
+        },
+        {
+            "description": "Validate that a process-creation rule parses and compiles.",
+            "sql": (
+                "SELECT sigma.main.sigma_check("
+                "'{title: Process Create, logsource: {service: security}, "
+                "detection: {sel: {EventID: 1}, condition: sel}}') AS valid"
+            ),
+        },
+        {
+            "description": "Read a rule's title and severity level from its header metadata.",
+            "sql": (
+                "SELECT title, level FROM sigma.main.sigma_rule_info("
+                "'{title: Failed Logon, level: high, logsource: {service: security}, "
+                "detection: {sel: {EventID: 4625}, condition: sel}}')"
+            ),
+        },
+        {
+            "description": "List the event fields a rule keys on, for index and coverage planning.",
+            "sql": (
+                "SELECT field FROM sigma.main.sigma_match_fields("
+                "'{title: Failed Network Logon, logsource: {service: security}, "
+                "detection: {sel: {EventID: 4625, LogonType: 3}, condition: sel}}') ORDER BY field"
+            ),
+        },
+        {
+            "description": "Browse the field modifiers the evaluator supports.",
+            "sql": "SELECT modifier, kind FROM sigma.main.supported_modifiers ORDER BY modifier",
+        },
+    ]
 )
 
 # VGI413: ordered navigation registry for the schema. Each object declares one
@@ -394,7 +418,8 @@ _SUPPORTED_MODIFIERS_VIEW = View(
             "semantics. A rule using any modifier not listed here is rejected by `sigma_check` "
             "and raises from `sigma_match`, so this view is the authoritative capability list. "
             "The rows are generated from the evaluator's own registry, so they stay in lockstep "
-            "with behaviour. See the attached example queries to browse and filter it."
+            "with behaviour: filter by `kind` to review a family, or probe for a specific "
+            "`modifier` before authoring a rule that uses it."
         ),
         "vgi.keywords": json.dumps(
             [

@@ -155,6 +155,31 @@ class SigmaMatchFunction(ScalarFunction):
         ) | {
             "vgi.executable_examples": _MATCH_EXECUTABLE_EXAMPLES,
             "vgi.category": "detection",  # VGI409/411: primary category in sigma.main's registry
+            # VGI515: described example queries ({description, sql}), byte-identical
+            # SQL to the native `examples` below so the linter pairs them and
+            # recovers the descriptions the native examples carrier drops.
+            "vgi.example_queries": json.dumps(
+                [
+                    {
+                        "description": "A failed-logon event matches a rule requiring EventID 4625.",
+                        "sql": (
+                            'SELECT sigma.main.sigma_match(\'{"EventID": 4625, "LogonType": 3}\', '
+                            "'{title: Failed Network Logon, logsource: {service: security}, "
+                            "detection: {selection: {EventID: 4625}, condition: selection}}')"
+                        ),
+                    },
+                    {
+                        "description": "Hunt per row over an inline log table, keeping only matching events.",
+                        "sql": (
+                            "SELECT event FROM (VALUES "
+                            '(\'{"EventID": 4625, "LogonType": 3}\'), (\'{"EventID": 1}\')) AS logs(event) '
+                            "WHERE sigma.main.sigma_match(event, "
+                            "'{title: Failed Network Logon, logsource: {service: security}, "
+                            "detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}')"
+                        ),
+                    },
+                ]
+            ),
         }
         examples = [
             FunctionExample(
@@ -163,7 +188,17 @@ class SigmaMatchFunction(ScalarFunction):
                     "'{title: Failed Network Logon, logsource: {service: security}, "
                     "detection: {selection: {EventID: 4625}, condition: selection}}')"
                 ),
-                description="Does an event match a Sigma rule? (-> true)",
+                description="A failed-logon event matches a rule requiring EventID 4625.",
+            ),
+            FunctionExample(
+                sql=(
+                    "SELECT event FROM (VALUES "
+                    '(\'{"EventID": 4625, "LogonType": 3}\'), (\'{"EventID": 1}\')) AS logs(event) '
+                    "WHERE sigma.main.sigma_match(event, "
+                    "'{title: Failed Network Logon, logsource: {service: security}, "
+                    "detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}')"
+                ),
+                description="Hunt per row over an inline log table, keeping only matching events.",
             ),
         ]
 
@@ -246,18 +281,38 @@ class SigmaCheckFunction(ScalarFunction):
                 "detection-as-code",
                 "security",
             ),
-        ) | {"vgi.category": "validation"}  # VGI409/411: primary category in sigma.main's registry
+        ) | {
+            "vgi.category": "validation",  # VGI409/411: primary category in sigma.main's registry
+            # VGI515: described example queries ({description, sql}), byte-identical
+            # SQL to the native `examples` below so the linter pairs them and
+            # recovers the descriptions the native examples carrier drops.
+            "vgi.example_queries": json.dumps(
+                [
+                    {
+                        "description": "A well-formed rule with a logsource and condition validates as true.",
+                        "sql": (
+                            "SELECT sigma.main.sigma_check('{title: Failed Logon, logsource: {service: security}, "
+                            "detection: {selection: {EventID: 4625}, condition: selection}}')"
+                        ),
+                    },
+                    {
+                        "description": "A rule that is not valid Sigma YAML returns false rather than raising.",
+                        "sql": "SELECT sigma.main.sigma_check('not a valid rule')",
+                    },
+                ]
+            ),
+        }
         examples = [
             FunctionExample(
                 sql=(
                     "SELECT sigma.main.sigma_check('{title: Failed Logon, logsource: {service: security}, "
                     "detection: {selection: {EventID: 4625}, condition: selection}}')"
                 ),
-                description="Validate a Sigma rule (-> true)",
+                description="A well-formed rule with a logsource and condition validates as true.",
             ),
             FunctionExample(
                 sql="SELECT sigma.main.sigma_check('not a valid rule')",
-                description="Invalid rule (-> false)",
+                description="A rule that is not valid Sigma YAML returns false rather than raising.",
             ),
         ]
 
