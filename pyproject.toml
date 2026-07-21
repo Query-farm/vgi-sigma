@@ -33,12 +33,24 @@ dependencies = [
 http = [
     "vgi-python[http]>=0.16.0",
 ]
+# HTTP-serving extra installed by the Docker image (`pip install '.[serve]'`),
+# so the container can serve the worker over `--http` (/health + VGI RPC).
+serve = [
+    "vgi-python[http]>=0.16.0",
+]
 dev = [
     "pytest>=8",
     "mypy>=1.10",
     "ruff>=0.5",
     "pydoclint",
 ]
+
+[project.scripts]
+# Console entry point DuckDB's vgi extension can spawn over stdio, and the name
+# the Docker image execs for the stdio transport. Points at the wheel-importable
+# worker module (not the repo-root PEP 723 shim), so an installed wheel is a
+# self-contained, runnable worker.
+vgi-sigma-worker = "vgi_sigma.worker:main"
 
 [project.urls]
 Homepage = "https://query.farm"
