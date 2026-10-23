@@ -45,6 +45,7 @@ def _match(client: Client, events: list, rules: list) -> list:
     results = list(
         client.scalar_function(
             function_name="sigma_match",
+            schema_path=["main"],
             input=iter([batch]),
             arguments=Arguments(positional=[]),
         )
@@ -57,6 +58,7 @@ def _check(client: Client, rules: list) -> list:
     results = list(
         client.scalar_function(
             function_name="sigma_check",
+            schema_path=["main"],
             input=iter([batch]),
             arguments=Arguments(positional=[]),
         )

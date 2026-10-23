@@ -19,7 +19,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "vgi-python[http]>=0.30.0",
+    "vgi-python[http]>=0.46.1",
     "pysigma>=0.11",
     "pyarrow",
 ]
@@ -31,18 +31,19 @@ dependencies = [
 # project-level `http` extra re-states it so CI can `uv sync --extra http` to
 # make the intent explicit for the SQL-E2E http leg.
 http = [
-    "vgi-python[http]>=0.30.0",
+    "vgi-python[http]>=0.46.1",
 ]
 # HTTP-serving extra installed by the Docker image (`pip install '.[serve]'`),
 # so the container can serve the worker over `--http` (/health + VGI RPC).
 serve = [
-    "vgi-python[http]>=0.30.0",
+    "vgi-python[http]>=0.46.1",
 ]
 dev = [
     "pytest>=8",
     "mypy>=1.10",
     "ruff>=0.5",
     "pydoclint",
+    "pyarrow-stubs",
 ]
 
 [project.scripts]

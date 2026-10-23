@@ -1,0 +1,20 @@
+# Private graders for `vgi-lint simulate` (VGI416). The worker publishes only
+# task names and prompts in vgi.agent_test_tasks; these canonical solutions and
+# grading options stay in the repo and are merged by task name.
+tasks:
+  - name: match-failed-network-logon
+    reference_sql: "SELECT sigma.main.sigma_match('{\"EventID\": 4625, \"LogonType\": 3}', '{title: Failed Network Logon, logsource: {service: security}, detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}') AS matched"
+    ignore_column_names: true
+  - name: validate-sigma-rule
+    reference_sql: "SELECT sigma.main.sigma_check('{title: Failed Logon, logsource: {service: security}, detection: {selection: {EventID: 4625}, condition: selection}}') AS valid"
+    ignore_column_names: true
+  - name: read-rule-title-and-level
+    reference_sql: "SELECT title, level FROM sigma.main.sigma_rule_info('{title: Failed Logon, level: high, logsource: {service: security}, detection: {selection: {EventID: 4625}, condition: selection}}')"
+    ignore_column_names: true
+  - name: list-referenced-fields
+    reference_sql: "SELECT field FROM sigma.main.sigma_match_fields('{title: Failed Network Logon, logsource: {service: security}, detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}')"
+    ignore_column_names: true
+    unordered: true
+  - name: count-supported-modifiers
+    reference_sql: "SELECT count(*) AS affix_modifiers FROM sigma.main.supported_modifiers WHERE kind = 'affix'"
+    ignore_column_names: true

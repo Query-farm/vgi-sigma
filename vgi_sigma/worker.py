@@ -136,9 +136,9 @@ _MAIN_DESCRIPTION_MD = (
 
 # VGI152/VGI920: a fixed suite of analyst tasks `vgi-lint simulate` grades. The
 # analyst sees only each task's prompt (never the reference SQL) and must drive
-# the worker to the same result. References are deterministic; where column
-# names or row order aren't pinned by the prompt we set ignore_column_names /
-# unordered so a correct answer isn't failed on cosmetics.
+# the worker to the same result. VGI416: only {name, prompt} is published here;
+# the deterministic reference SQL and the ignore_column_names / unordered
+# relaxations live in the private vgi-agent-tests.yaml sidecar at the repo root.
 _AGENT_TEST_TASKS = json.dumps(
     [
         {
@@ -149,12 +149,6 @@ _AGENT_TEST_TASKS = json.dumps(
                 "detection rule for failed network logons — one whose selection requires "
                 "EventID 4625 and LogonType 3. Return a single boolean value."
             ),
-            "reference_sql": (
-                'SELECT sigma.main.sigma_match(\'{"EventID": 4625, "LogonType": 3}\', '
-                "'{title: Failed Network Logon, logsource: {service: security}, "
-                "detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}') AS matched"
-            ),
-            "ignore_column_names": True,
         },
         {
             "name": "validate-sigma-rule",
@@ -164,12 +158,6 @@ _AGENT_TEST_TASKS = json.dumps(
                 "title 'Failed Logon', a security logsource, and a selection matching EventID "
                 "4625 with condition 'selection'. Return a single boolean value."
             ),
-            "reference_sql": (
-                "SELECT sigma.main.sigma_check("
-                "'{title: Failed Logon, logsource: {service: security}, "
-                "detection: {selection: {EventID: 4625}, condition: selection}}') AS valid"
-            ),
-            "ignore_column_names": True,
         },
         {
             "name": "read-rule-title-and-level",
@@ -178,12 +166,6 @@ _AGENT_TEST_TASKS = json.dumps(
                 "level. The rule has title 'Failed Logon', level 'high', a security logsource, "
                 "and a selection matching EventID 4625 with condition 'selection'."
             ),
-            "reference_sql": (
-                "SELECT title, level FROM sigma.main.sigma_rule_info("
-                "'{title: Failed Logon, level: high, logsource: {service: security}, "
-                "detection: {selection: {EventID: 4625}, condition: selection}}')"
-            ),
-            "ignore_column_names": True,
         },
         {
             "name": "list-referenced-fields",
@@ -193,13 +175,6 @@ _AGENT_TEST_TASKS = json.dumps(
                 "Logon' with a security logsource, whose selection matches EventID 4625 and "
                 "LogonType 3, with condition 'selection'. Return the field names."
             ),
-            "reference_sql": (
-                "SELECT field FROM sigma.main.sigma_match_fields("
-                "'{title: Failed Network Logon, logsource: {service: security}, "
-                "detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}')"
-            ),
-            "unordered": True,
-            "ignore_column_names": True,
         },
         {
             "name": "count-supported-modifiers",
@@ -208,10 +183,6 @@ _AGENT_TEST_TASKS = json.dumps(
                 "modifier its evaluator understands. Using that table, how many distinct "
                 "modifiers of kind 'affix' does the engine support? Return a single number."
             ),
-            "reference_sql": (
-                "SELECT count(*) AS affix_modifiers FROM sigma.main.supported_modifiers WHERE kind = 'affix'"
-            ),
-            "ignore_column_names": True,
         },
     ]
 )
@@ -467,7 +438,7 @@ _SIGMA_CATALOG = Catalog(
     tags=_CATALOG_TAGS,
     schemas=[
         Schema(
-            name="main",
+            path=["main"],
             comment="Evaluate, validate, and introspect Sigma detection rules over log/event rows",
             tags=_SCHEMA_TAGS,
             views=[_SUPPORTED_MODIFIERS_VIEW],
