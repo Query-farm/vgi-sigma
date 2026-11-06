@@ -14,7 +14,9 @@ extension from the Haybarn community channel:
 1. **Install the worker** — `uv sync --frozen` into a venv. `sigma_worker.py`
    is a self-contained PEP 723 stdio worker the extension can spawn via
    `uv run sigma_worker.py`.
-2. **Download the runner** — the matching `haybarn_unittest-*` asset per
+2. **Download the runner** — from the newest `haybarn-v2.0.*` release (haybarn
+   2.0's community `vgi` extension is the one that speaks the worker's VGI
+   protocol, vgi.v3 / 3.1), the matching `haybarn_unittest-*` asset per
    platform from the latest Haybarn release.
 3. **Preprocess** — the standalone runner links none of the extensions the
    tests gate on, so [`preprocess-require.awk`](preprocess-require.awk) rewrites
@@ -25,7 +27,7 @@ extension from the Haybarn community channel:
    and everything else pass through untouched.
 4. **Run** — [`run-integration.sh`](run-integration.sh) stages the preprocessed
    tree, points `VGI_SIGMA_WORKER` at `uv run sigma_worker.py`, warms the
-   extension cache once, then runs the suite in a single `haybarn-unittest`
+   extension cache once, then runs the suite in a single `haybarn-unittest --keep-home`
    invocation. Any failed assertion exits non-zero and fails the job.
 
 ## Run it locally
