@@ -1,6 +1,6 @@
 [project]
 name = "vgi-sigma"
-version = "0.1.0"
+version = "0.2.0"
 description = "Evaluate Sigma detection rules against log/event rows (detection-as-code) as a VGI worker for DuckDB/SQL"
 readme = "README.md"
 requires-python = ">=3.13"
