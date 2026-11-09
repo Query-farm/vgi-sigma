@@ -16,7 +16,7 @@ extension from the Haybarn community channel:
    `uv run sigma_worker.py`.
 2. **Download the runner** — from the newest `haybarn-v2.0.*` release (haybarn
    2.0's community `vgi` extension is the one that speaks the worker's VGI
-   protocol, vgi.v3 / 3.1), the matching `haybarn_unittest-*` asset per
+   protocol, vgi.v3 / 3.2), the matching `haybarn_unittest-*` asset per
    platform from the latest Haybarn release.
 3. **Preprocess** — the standalone runner links none of the extensions the
    tests gate on, so [`preprocess-require.awk`](preprocess-require.awk) rewrites
