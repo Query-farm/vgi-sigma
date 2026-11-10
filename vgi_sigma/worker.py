@@ -189,6 +189,9 @@ _AGENT_TEST_TASKS = json.dumps(
 
 _CATALOG_TAGS = {
     "vgi.title": "Sigma Detection-Rule Evaluation",
+    "vgi.subtitle": (
+        "Match log events against Sigma detection rules, check that rules compile, and list the fields they use."
+    ),
     "vgi.keywords": json.dumps(
         [
             "sigma",
@@ -299,7 +302,8 @@ _SCHEMA_CATEGORIES = json.dumps(
 # Per-schema discovery/description + VGI123 classifying tags. Note the
 # classifying keys (domain/category/topic) are BARE, not vgi.-namespaced.
 _SCHEMA_TAGS = {
-    "vgi.title": "Sigma — main",
+    "vgi.title": "Sigma Rules",
+    "vgi.subtitle": "Sigma rule matching, validation and introspection functions plus a modifier reference table.",
     "vgi.keywords": json.dumps(
         [
             "sigma",
