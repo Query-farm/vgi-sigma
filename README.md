@@ -17,7 +17,7 @@ Compile a Sigma rule **once**, then test it against every row of a log table:
 
 ```sql
 INSTALL vgi FROM community; LOAD vgi;
-ATTACH 'sigma' (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-sigma@v0.3.0 vgi-sigma-worker');
+ATTACH 'sigma' (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-sigma@v0.4.0 vgi-sigma-worker');
 
 -- The headline: which log rows match a rule?
 SELECT *
@@ -47,7 +47,7 @@ The worker isn't on PyPI; [uv](https://docs.astral.sh/uv/) runs it straight from
 INSTALL vgi FROM community;
 LOAD vgi;
 
-ATTACH 'sigma' AS sigma (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-sigma@v0.3.0 vgi-sigma-worker');
+ATTACH 'sigma' AS sigma (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-sigma@v0.4.0 vgi-sigma-worker');
 
 -- Does a failed-network-logon event match a brute-force detection rule?
 SELECT sigma.main.sigma_match('{"EventID": 4625, "LogonType": 3}', '{title: Failed Network Logon, logsource: {service: security}, detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}') AS matched;
@@ -56,14 +56,14 @@ SELECT sigma.main.sigma_match('{"EventID": 4625, "LogonType": 3}', '{title: Fail
 SELECT sigma.main.sigma_check('{title: Process Create, logsource: {service: security}, detection: {sel: {EventID: 1}, condition: sel}}') AS valid;
 ```
 
-Change `@v0.3.0` to move to a newer release.
+Change `@v0.4.0` to move to a newer release.
 
 ### Other ways to run it
 
 - **Docker** (the image bundles the worker and its dependencies):
 
   ```sql
-  ATTACH 'sigma' AS sigma (TYPE vgi, LOCATION 'docker://ghcr.io/query-farm/vgi-sigma:0.3.0');
+  ATTACH 'sigma' AS sigma (TYPE vgi, LOCATION 'docker://ghcr.io/query-farm/vgi-sigma:0.4.0');
   ```
 
 - **From a local checkout** (`git clone https://github.com/Query-farm/vgi-sigma`), point `LOCATION` at `uv run --project /path/to/vgi-sigma vgi-sigma-worker`.
@@ -194,7 +194,7 @@ uv run ruff check . && uv run mypy vgi_sigma/
 subprocess (exactly how DuckDB drives it after `ATTACH`) and runs the
 sqllogictest files under `test/sql/`. Install the runner once with
 `uv tool install --prerelease allow 'haybarn-unittest>=2.0.0rc11,<2.1'`
-(haybarn 2.0 is required for VGI protocol vgi.v3 / 3.2).
+(haybarn 2.0 is required for VGI protocol vgi.v3 / 3.3).
 
 ---
 
