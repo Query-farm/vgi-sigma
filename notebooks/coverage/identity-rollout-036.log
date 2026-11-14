@@ -1,0 +1,5 @@
+Shared notebook tools v0.3.6; complete default runs in fresh kernels.
+Updated vgi-example-notebooks v0.3.2 (94111953) -> v0.3.6 (31eb1be7)
+Running 01_condition_matches_need_source_scope.ipynb ...
+OK: 20 code cells, 2 charts, 4.8s
+All saved output cells are byte-identical to the previous publication. Analytical code is unchanged.
