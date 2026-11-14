@@ -1,0 +1,6 @@
+{
+  "note": "Twelve authored synthetic records; source labels are fixture annotations, not authenticated provenance. No real account or log data.",
+  "sha256": {
+    "events.jsonl": "2c656e02d7d37d3a6d44b1b014fdacee705c93e5c7e5b9a00fecf2e3cdb77ac3"
+  }
+}

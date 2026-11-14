@@ -1,0 +1,12 @@
+{"event_id": "matched-a", "event_json": "{\"EventID\":4625,\"LogonType\":3}", "source_product": "windows", "source_service": "security"}
+{"event_id": "matched-b", "event_json": "{\"EventID\":4625,\"LogonType\":3}", "source_product": "windows", "source_service": "security"}
+{"event_id": "wrong-source", "event_json": "{\"EventID\":4625,\"LogonType\":3}", "source_product": "linux", "source_service": "auth"}
+{"event_id": "unknown-source", "event_json": "{\"EventID\":4625,\"LogonType\":3}", "source_product": null, "source_service": null}
+{"event_id": "missing-field", "event_json": "{\"EventID\":4625}", "source_product": "windows", "source_service": "security"}
+{"event_id": "null-field", "event_json": "{\"EventID\":4625,\"LogonType\":null}", "source_product": "windows", "source_service": "security"}
+{"event_id": "other-event", "event_json": "{\"EventID\":4624,\"LogonType\":3}", "source_product": "windows", "source_service": "security"}
+{"event_id": "other-logon", "event_json": "{\"EventID\":4625,\"LogonType\":2}", "source_product": "windows", "source_service": "security"}
+{"event_id": "empty-object", "event_json": "{}", "source_product": "windows", "source_service": "security"}
+{"event_id": "array", "event_json": "[]", "source_product": "windows", "source_service": "security"}
+{"event_id": "malformed", "event_json": "{not-json", "source_product": "windows", "source_service": "security"}
+{"event_id": "missing", "event_json": null, "source_product": "windows", "source_service": "security"}
