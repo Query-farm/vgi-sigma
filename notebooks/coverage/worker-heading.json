@@ -1,0 +1,11 @@
+{
+  "repository": "Query-farm/vgi-sigma",
+  "title": "Sigma Detection-Rule Evaluation",
+  "subtitle": "Match log events against Sigma detection rules, check that rules compile, and list the fields they use.",
+  "worker_release": "v0.4.0",
+  "provenance": "Exact catalog tags from immutable released Python source; public tag verified",
+  "source_url": "https://github.com/Query-farm/vgi-sigma/blob/42390f68a4febac437403b2f48ada067f1c6fe23/vgi_sigma/worker.py#L191",
+  "source_sha256": "d56f01a72abe7ee0c45b89a7bc5b95088d0fc8939012c7ddbb76a0a26913beea",
+  "source_path": "vgi_sigma/worker.py",
+  "source_commit": "42390f68a4febac437403b2f48ada067f1c6fe23"
+}

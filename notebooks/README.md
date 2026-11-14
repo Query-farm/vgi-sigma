@@ -60,8 +60,8 @@ the same matching JSON payload as the two in-scope fixtures. This comparison doe
 not authenticate labels, fix malformed events, or measure detection accuracy.
 Reset `ENFORCE_LOGSOURCE=True` for the saved default.
 
-The shared [standard](https://github.com/Query-farm/vgi-example-notebooks/blob/v0.3.6/docs/standard.md)
-and runner are pinned at **v0.3.6**, without duplicated presentation/runner files.
+The shared [standard](https://github.com/Query-farm/vgi-example-notebooks/blob/v0.3.8/docs/standard.md)
+and runner are pinned at **v0.3.8**, without duplicated presentation/runner files.
 Native SVG outputs also have content-addressed `charts/` assets for GitHub;
 experiment copies keep native SVG. Keep historical chart assets when updating an
 example. The runner preserves the saved default on failure and requires a separate
