@@ -33,7 +33,7 @@ from vgi.arguments import Param, Returns
 from vgi.metadata import FunctionExample
 from vgi.scalar_function import ScalarFunction
 
-from . import engine, meta
+from . import composed, engine, meta
 
 # A reusable brute-force rule (failed network logons), with the non-empty
 # `logsource:` block pySigma requires. Written as single-line YAML flow syntax so
@@ -73,6 +73,7 @@ _MATCH_EXECUTABLE_EXAMPLES = json.dumps(
                 "('{\"EventID\": 1}')) AS logs(event) ORDER BY matched"
             ),
         },
+        {"description": composed.RULE_LIBRARY_HUNT_DESCRIPTION, "sql": composed.RULE_LIBRARY_HUNT_SQL},
     ]
 )
 
@@ -178,6 +179,7 @@ class SigmaMatchFunction(ScalarFunction):
                             "detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}')"
                         ),
                     },
+                    {"description": composed.RULE_LIBRARY_HUNT_DESCRIPTION, "sql": composed.RULE_LIBRARY_HUNT_SQL},
                 ]
             ),
         }
@@ -199,6 +201,10 @@ class SigmaMatchFunction(ScalarFunction):
                     "detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}')"
                 ),
                 description="Hunt per row over an inline log table, keeping only matching events.",
+            ),
+            FunctionExample(
+                sql=composed.RULE_LIBRARY_HUNT_SQL,
+                description=composed.RULE_LIBRARY_HUNT_DESCRIPTION,
             ),
         ]
 

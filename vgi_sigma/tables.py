@@ -32,7 +32,7 @@ from vgi.table_function import (
 )
 from vgi_rpc.rpc import OutputCollector
 
-from . import engine, meta
+from . import composed, engine, meta
 from .schema_utils import field
 
 
@@ -167,6 +167,7 @@ class SigmaRuleInfoFunction(TableFunctionGenerator[_RuleArg]):
                             "detection: {sel: {EventID: 1}, condition: sel}}')"
                         ),
                     },
+                    {"description": composed.ALERT_ENRICHMENT_DESCRIPTION, "sql": composed.ALERT_ENRICHMENT_SQL},
                 ]
             ),
         }
@@ -186,6 +187,10 @@ class SigmaRuleInfoFunction(TableFunctionGenerator[_RuleArg]):
                     "detection: {sel: {EventID: 1}, condition: sel}}')"
                 ),
                 description="Expand a rule's MITRE ATT&CK tags into one row per tag.",
+            ),
+            FunctionExample(
+                sql=composed.ALERT_ENRICHMENT_SQL,
+                description=composed.ALERT_ENRICHMENT_DESCRIPTION,
             ),
         ]
 
@@ -308,6 +313,7 @@ class SigmaMatchFieldsFunction(TableFunctionGenerator[_RuleArg]):
                             "detection: {sel: {EventID: 4625, LogonType: 3}, condition: sel}}')"
                         ),
                     },
+                    {"description": composed.MISSING_FIELDS_DESCRIPTION, "sql": composed.MISSING_FIELDS_SQL},
                 ]
             ),
         }
@@ -318,7 +324,11 @@ class SigmaMatchFieldsFunction(TableFunctionGenerator[_RuleArg]):
                     "'{title: Failed Network Logon, logsource: {service: security}, "
                     "detection: {sel: {EventID: 4625, LogonType: 3}, condition: sel}}')"
                 ),
-                description="List the fields a rule keys on (-> EventID, LogonType)",
+                description="List the distinct event fields a rule keys on (-> EventID, LogonType).",
+            ),
+            FunctionExample(
+                sql=composed.MISSING_FIELDS_SQL,
+                description=composed.MISSING_FIELDS_DESCRIPTION,
             ),
         ]
 

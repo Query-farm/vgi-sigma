@@ -41,6 +41,12 @@ SELECT sigma.sigma_check(E'title: T\nlogsource: {category: firewall}\ndetection:
 ----
 false
 
+# A rule without a title is invalid (pySigma requires one) -> false.
+query I
+SELECT sigma.sigma_check(E'logsource: {service: security}\ndetection: {sel: {EventID: 1}, condition: sel}');
+----
+false
+
 # NULL -> NULL.
 query I
 SELECT sigma.sigma_check(NULL) IS NULL;

@@ -22,6 +22,7 @@ vgi_sigma/
   engine.py        pure parse + compile + evaluate; lru_cache by rule text; no Arrow/VGI; unit-testable
   scalars.py       per-row scalars: sigma_match, sigma_check
   tables.py        table functions: sigma_rule_info, sigma_match_fields
+  composed.py      composed example SQL (several objects in one query), defined once
   schema_utils.py  pa.Field comment / column-doc helper
 tests/             pytest: test_engine (pure), test_tables (in-proc), test_scalars (Client RPC)
 test/sql/*.test    haybarn-unittest sqllogictest — authoritative E2E
@@ -65,10 +66,11 @@ Value types we handle: `SigmaString` (with `*`/`?` wildcards → regex),
 
 ## Sharp edges (learned the hard way)
 
-1. **Every Sigma rule MUST have a non-empty `logsource:` block.** pySigma raises
-   `SigmaLogsourceError` otherwise. All example rules (in docstrings, README,
-   tests, SQL) include one; a rule without it fails `sigma_check` / raises a clear
-   parse error. Don't write `logsource: {}` either — it must be non-empty.
+1. **Every Sigma rule MUST have a `title:` and a non-empty `logsource:`
+   block.** pySigma raises `SigmaTitleError` / `SigmaLogsourceError`
+   otherwise. All example rules (in docstrings, README, tests, SQL) include
+   both; a rule without them fails `sigma_check` / raises a clear parse error.
+   Don't write `logsource: {}` either — it must be non-empty.
 
 2. **Robustness asymmetry, by design.** A malformed *event* JSON in
    `sigma_match` → `false` (one bad log row must not abort a column scan). A

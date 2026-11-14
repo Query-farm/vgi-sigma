@@ -85,11 +85,13 @@ Scalars take **positional** arguments.
 
 ```sql
 SELECT sigma.sigma_match('{"EventID": 4625, "LogonType": 3}',
-    'logsource: {service: security}
+    'title: Failed Network Logon
+logsource: {service: security}
 detection: {sel: {EventID: 4625, LogonType: 3}, condition: sel}');         -- true
 
 SELECT sigma.sigma_check(
-    'logsource: {service: security}
+    'title: Process Create
+logsource: {service: security}
 detection: {sel: {EventID: 1}, condition: sel}');                          -- true
 SELECT sigma.sigma_check(': not valid yaml :');                            -- false
 ```
@@ -105,6 +107,26 @@ SELECT sigma.sigma_check(': not valid yaml :');                            -- fa
 SELECT title, level, status FROM sigma.sigma_rule_info('<rule yaml>');
 SELECT UNNEST(tags) AS tag FROM sigma.sigma_rule_info('<rule yaml>');
 SELECT field FROM sigma.sigma_match_fields('<rule yaml>');  -- index / coverage planning
+```
+
+### Combining them
+
+The functions compose in ordinary SQL. Run a rule library over a log, skipping
+rules the engine can't evaluate (`sigma_check`) and joining each event to every
+rule it matches (`sigma_match`):
+
+```sql
+WITH rules(rule_name, rule) AS (VALUES
+    ('failed_network_logon', '{title: Failed Network Logon, level: medium, logsource: {product: windows, service: security}, detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}'),
+    ('ssh_to_internal_net',  '{title: SSH To Internal Network, level: low, logsource: {category: network_connection}, detection: {selection: {DestinationIp|cidr: 10.0.0.0/8, DestinationPort: 22}, condition: selection}}')),
+logs(event_id, event) AS (VALUES
+    (1, '{"EventID": 4625, "LogonType": 3, "TargetUserName": "admin"}'),
+    (2, '{"EventID": 4625, "LogonType": 2, "TargetUserName": "alice"}')),
+usable AS (SELECT rule_name, rule FROM rules WHERE sigma.main.sigma_check(rule))
+SELECT l.event_id, u.rule_name
+FROM logs AS l JOIN usable AS u ON sigma.main.sigma_match(l.event, u.rule)
+ORDER BY l.event_id, u.rule_name;
+-- 1 | failed_network_logon   (the cidr rule is skipped: sigma_check rejects it)
 ```
 
 ---

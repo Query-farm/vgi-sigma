@@ -40,7 +40,7 @@ import json
 from vgi import Worker
 from vgi.catalog import Catalog, Schema, View
 
-from vgi_sigma import engine
+from vgi_sigma import composed, engine
 from vgi_sigma.scalars import SCALAR_FUNCTIONS
 from vgi_sigma.tables import TABLE_FUNCTIONS
 
@@ -184,6 +184,37 @@ _AGENT_TEST_TASKS = json.dumps(
                 "modifiers of kind 'affix' does the engine support? Return a single number."
             ),
         },
+        {
+            "name": "alert-rdp-failures-with-severity",
+            "prompt": (
+                "A Windows security log has four events, each a JSON object: event 1 is "
+                '{"EventID": 4625, "LogonType": 10, "TargetUserName": "admin"}, event 2 is '
+                '{"EventID": 4625, "LogonType": 3, "TargetUserName": "admin"}, event 3 is '
+                '{"EventID": 4624, "LogonType": 10, "TargetUserName": "admin"} and event 4 is '
+                '{"EventID": 4625, "LogonType": 10, "TargetUserName": "guest"}. A Sigma rule '
+                "titled 'Failed RDP Logon' with level 'high', logsource product windows / service "
+                "security, selects EventID 4625 and LogonType 10 (condition 'selection'). Raise an "
+                "alert for every event the rule matches: return event_id (INTEGER), the rule's "
+                "title and the rule's severity level as read from the rule's own metadata "
+                "(both VARCHAR), one row per matching event, ordered by event_id."
+            ),
+        },
+        {
+            "name": "count-missing-rule-fields",
+            "prompt": (
+                "Before trusting a non-match you want to know whether the events even carry the "
+                "fields a Sigma rule looks at. The rule is titled 'Suspicious Service Install', "
+                "logsource product windows / service system, and its selection requires EventID "
+                "7045 and ServiceFileName containing 'powershell' (condition 'selection'). The "
+                "events are: event 1 "
+                '{"EventID": 7045, "ServiceName": "updater", "ServiceFileName": '
+                '"powershell.exe -nop -enc SQBFAFgA"}, event 2 {"EventID": 7045, "ServiceName": '
+                '"spooler2"} and event 3 {"Provider": "Service Control Manager"}. For each event '
+                "return event_id (INTEGER), whether it matches the rule (BOOLEAN) and how many of "
+                "the event fields the rule references are absent from the event (BIGINT), ordered "
+                "by event_id."
+            ),
+        },
     ]
 )
 
@@ -262,6 +293,8 @@ _SCHEMA_EXAMPLE_QUERIES = json.dumps(
             "description": "Browse the field modifiers the evaluator supports.",
             "sql": "SELECT modifier, kind FROM sigma.main.supported_modifiers ORDER BY modifier",
         },
+        # Composed examples combining several sigma objects (see vgi_sigma/composed.py).
+        *composed.COMPOSED_EXAMPLE_QUERIES,
     ]
 )
 
@@ -427,6 +460,10 @@ _SUPPORTED_MODIFIERS_VIEW = View(
                 {
                     "description": "Is the regular-expression modifier supported?",
                     "sql": "SELECT count(*) > 0 AS has_regex FROM sigma.main.supported_modifiers WHERE modifier = 're'",
+                },
+                {
+                    "description": composed.UNSUPPORTED_MODIFIERS_DESCRIPTION,
+                    "sql": composed.UNSUPPORTED_MODIFIERS_SQL,
                 },
             ]
         ),
