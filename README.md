@@ -242,4 +242,4 @@ Copyright 2026 Query Farm LLC - https://query.farm
 
 ## Executable notebooks
 
-See [the SQL-first Python notebook](notebooks/README.md) for Sigma rule introspection, event quality, field coverage and explicit logsource selection with visualizations.
+See [the SQL-first Python notebook](notebooks/README.md) for evaluator-capability checks, Sigma rule introspection, event quality, field coverage and explicit logsource selection across all five public SQL surfaces.

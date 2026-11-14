@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "repository": "Query-farm/vgi-sigma",
+  "revision": "daf0d1219532433660ff8aa85cc2cfc68ba11467",
+  "captured_at": "2026-11-14T17:50:14.003395+00:00",
+  "default_schema": "main",
+  "scope": "all_public_functions_and_tables",
+  "complete": true,
+  "evidence": [
+    {
+      "path": "coverage/current-functions.json",
+      "sha256": "80da5a54cda3baf5f7762d2edf7d8fae4f83b47c9ee87ea5680c6db30cf22c79",
+      "description": "Complete worker-filtered duckdb_functions() export, including explicit empty physical tables."
+    },
+    {
+      "path": "coverage/current-tables.json",
+      "sha256": "68761677259565b1cfd86f2a9264b43e86d8ad99145610f89f3c9d337f1be380",
+      "description": "Complete worker-filtered duckdb_tables() export, including explicit empty physical tables."
+    },
+    {
+      "path": "coverage/current-views.json",
+      "sha256": "3e2d60033ca7467a366f8471b432b23be79b61ffcca9f74cf10d5c8aba9bb900",
+      "description": "Complete worker-filtered duckdb_views() export, including explicit empty physical tables."
+    },
+    {
+      "path": "coverage/catalog-provenance.json",
+      "sha256": "1f498a7d409e267196cfec06e0aecdb5e60d48ff193aa77c82cd5afb5c3afd5d",
+      "description": "Release/current source identity, resolved release dependencies and unchanged-domain compatibility review."
+    }
+  ],
+  "objects": [
+    {
+      "schema": "main",
+      "name": "sigma_rule_info",
+      "kind": "function",
+      "signatures": [
+        "sigma_rule_info(rule_yaml VARCHAR) -> None"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "sigma_match_fields",
+      "kind": "function",
+      "signatures": [
+        "sigma_match_fields(rule_yaml VARCHAR) -> None"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "sigma_check",
+      "kind": "function",
+      "signatures": [
+        "sigma_check(rule_yaml VARCHAR) -> BOOLEAN"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "sigma_match",
+      "kind": "function",
+      "signatures": [
+        "sigma_match(event_json VARCHAR, rule_yaml VARCHAR) -> BOOLEAN"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "supported_modifiers",
+      "kind": "table",
+      "signatures": [
+        "VIEW supported_modifiers (None columns)"
+      ],
+      "authentication": "none",
+      "access": "read"
+    }
+  ]
+}

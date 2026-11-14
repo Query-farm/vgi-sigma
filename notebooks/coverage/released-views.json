@@ -1,0 +1,45 @@
+{
+  "query": "SELECT * FROM duckdb_views() WHERE database_name='sigma'",
+  "columns": [
+    "database_name",
+    "database_oid",
+    "schema_name",
+    "schema_oid",
+    "view_name",
+    "view_oid",
+    "comment",
+    "tags",
+    "internal",
+    "temporary",
+    "column_count",
+    "sql",
+    "is_bound"
+  ],
+  "rows": [
+    [
+      "sigma",
+      22592,
+      "main",
+      22593,
+      "supported_modifiers",
+      22730,
+      "Every Sigma field modifier the evaluator implements, one per row (discovery table).",
+      {
+        "category": "detection",
+        "domain": "security",
+        "topic": "sigma-modifiers",
+        "vgi.category": "reference",
+        "vgi.doc_llm": "A ready-to-scan **discovery table** of every Sigma field modifier this worker's evaluator understands, so you can check what a rule may use before authoring or trusting it. Browse the view directly (no arguments): the `modifier` column holds the keyword written after a pipe in a rule field (e.g. `CommandLine|contains`), with the `plain` row standing for the default modifier-free comparison; `kind` groups them into `equality`, `affix`, `startswith`/`endswith` style, `regex`, and the `all` `combiner`; and `description` explains the matching semantics. A rule that uses any modifier absent from this table is rejected by `sigma_check` and raises from `sigma_match`, so this is the authoritative capability list. Rows are generated from the evaluator's own registry, so the view can never drift from actual behaviour. Runnable browse and filter queries are attached as examples.",
+        "vgi.doc_md": "# supported_modifiers (view)\n\nEvery Sigma field modifier the evaluator implements, as a plain browsable table.\n\nThe `modifier` column is the keyword written after a pipe on a rule field (`CommandLine|contains`, `Image|endswith`); the `plain` row is the default modifier-free comparison. The `kind` column groups modifiers into `equality`, `affix`, `regex`, and `combiner` families, and `description` explains the matching semantics. A rule using any modifier not listed here is rejected by `sigma_check` and raises from `sigma_match`, so this view is the authoritative capability list. The rows are generated from the evaluator's own registry, so they stay in lockstep with behaviour: filter by `kind` to review a family, or probe for a specific `modifier` before authoring a rule that uses it.",
+        "vgi.example_queries": "[{\"description\": \"List every supported Sigma field modifier and its family.\", \"sql\": \"SELECT modifier, kind FROM sigma.main.supported_modifiers ORDER BY modifier\"}, {\"description\": \"Show only the affix modifiers (contains / startswith / endswith).\", \"sql\": \"SELECT modifier, description FROM sigma.main.supported_modifiers WHERE kind = 'affix' ORDER BY modifier\"}, {\"description\": \"Is the regular-expression modifier supported?\", \"sql\": \"SELECT count(*) > 0 AS has_regex FROM sigma.main.supported_modifiers WHERE modifier = 're'\"}]",
+        "vgi.keywords": "[\"supported modifiers\", \"sigma modifiers\", \"field modifiers\", \"contains\", \"startswith\", \"endswith\", \"regex\", \"capabilities\", \"discovery\", \"supported features\"]",
+        "vgi.title": "Supported Sigma Modifiers"
+      },
+      false,
+      false,
+      null,
+      "CREATE VIEW supported_modifiers AS SELECT modifier, kind, description FROM (SELECT * FROM (VALUES ('plain', 'equality', 'Default modifier-free comparison: case-insensitive equality for strings, by-value for numbers and booleans; supports * and ? wildcards.'), ('contains', 'affix', 'Case-insensitive substring match anywhere within the event value.'), ('startswith', 'affix', 'Case-insensitive match anchored at the start of the event value.'), ('endswith', 'affix', 'Case-insensitive match anchored at the end of the event value.'), ('re', 'regex', 'Match the event value against a regular expression (Python re.search semantics).'), ('all', 'combiner', 'Require every listed value to match the field (AND) instead of the default OR.')) AS valueslist) AS t(modifier, kind, description);",
+      false
+    ]
+  ]
+}

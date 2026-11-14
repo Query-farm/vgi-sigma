@@ -1,0 +1,20 @@
+{
+  "repository": "Query-farm/vgi-sigma",
+  "released_tag": "v0.4.0",
+  "released_revision": "42390f68a4febac437403b2f48ada067f1c6fe23",
+  "current_public_revision": "daf0d1219532433660ff8aa85cc2cfc68ba11467",
+  "engine": "Haybarn 2.0.0rc11 / VGI e75482339d",
+  "released_launch": "uvx --python 3.14 --from git+https://github.com/Query-farm/vgi-sigma@v0.4.0 vgi-sigma-worker",
+  "release_dependencies": {
+    "vgi-sigma": "0.4.0",
+    "vgi-python": "0.51.1",
+    "vgi-rpc": "0.53.1",
+    "pyarrow": "26.0.1",
+    "pysigma": "2.1.0"
+  },
+  "current_collection": "Separate installed current-public source from uv sync --locked --extra dev; notebook uses release Git-tag worker only.",
+  "current_root_lock_sha256": "36e9a9682ea30da1a50daee088040b825edd9002b5651b74e23bda84a56d1ee2",
+  "comparison": "Full source diff from v0.4.0 to current public revision only adds composed example metadata/tasks; engine, registration, function argument and return schemas, view registry remain unchanged.",
+  "data_isolation": "Both catalog probes used a fresh TemporaryDirectory secret_directory, allow_persistent_secrets=False and an empty duckdb_secrets() inventory before ATTACH.",
+  "captured_at": "2026-11-14T17:50:14.003395+00:00"
+}

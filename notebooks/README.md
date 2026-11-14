@@ -1,98 +1,87 @@
-# VGI Sigma notebooks
+# Sigma examples
 
 [01 · Condition matches still need source scope](01_condition_matches_need_source_scope.ipynb)
-uses visible Haybarn SQL to inspect a Sigma rule, audit event JSON and referenced
-fields, evaluate the condition, and select matches for its declared log source.
-Two charts preserve field availability and reconcile every input to a review state.
-The saved notebook is executed against the real worker using synthetic events.
+uses twelve authored records to distinguish valid event objects, missing fields,
+raw condition matches and matches selected for a declared log source. It also
+checks evaluator capabilities before accepting a rule: the modifier reference
+supports plain numeric equality, while an unsupported `base64` rewrite is rejected.
+The two SVG charts retain every input record and explain what a false result hides.
 
-## Run
+[Open in Colab](https://colab.research.google.com/github/Query-farm/vgi-sigma/blob/main/notebooks/01_condition_matches_need_source_scope.ipynb),
+run the install cell, then **Run all**. The rule and all event rows are visible SQL
+inside the notebook; no clone, fixture download or private ruleset is required.
+The base shared package preserves compatible Colab plotting/data libraries.
+Hosted Colab itself has not been tested; a fresh Python 3.12 notebook-only run with
+preloaded libraries is validated separately.
 
-Install `uv` so both `uv` and `uvx` are on PATH, then from this directory:
-
-```sh
-uv sync --locked
-uv run --locked python execute.py
-```
-
-The whole `notebooks/` directory works when copied elsewhere. No worker checkout is
-required. The runner uses this directory as its working directory and a temporary
-kernel, replacing the saved notebook only after successful execution. Internet
-access is required initially for Python dependencies, the community VGI extension,
-and the Git-backed worker environment. Tested on macOS Apple silicon with Python
-3.14 and Haybarn 2.0.0rc11; compatible dependency wheels are required.
-
-For VS Code, select this directory's `.venv/bin/python` as the kernel, or register it:
+For a local run, install Python 3.11+ and [uv](https://docs.astral.sh/uv/), then:
 
 ```sh
-uv run --locked python -m ipykernel install --user --name vgi-sigma-notebooks --display-name 'Python (vgi-sigma notebooks)'
+cd notebooks
+uv sync --locked --extra runner
+uv run --locked --extra runner vgi-notebooks
 ```
 
-Use this directory as the working directory when running interactively. Parameters,
-VGI connection SQL and analytical SQL remain visible; preparation, plots and cleanup
-are folded. Restart and run all after changing `ENFORCE_LOGSOURCE`.
+The optional `runner` extra installs the local execution kernel. For an interactive
+kernel use `uv run --locked --extra runner python -m ipykernel install --user
+--name vgi-sigma-notebooks --display-name 'VGI Sigma notebooks'`; select it in
+Jupyter, restart and run all after changing a parameter.
 
-## Experiment
+The visible SQL launches the published release in a separate worker environment:
+
+```sql
+INSTALL vgi FROM community;
+LOAD vgi;
+ATTACH 'sigma' (TYPE vgi,
+  LOCATION 'uvx --python 3.14 --from git+https://github.com/Query-farm/vgi-sigma@v0.4.0 vgi-sigma-worker');
+```
+
+The shared package supplies `uvx`; it retrieves Python 3.14 and the release's own
+published dependencies on first use. No local worker checkout or dependency
+overrides are needed. The tested release environment resolved vgi-python 0.51.1,
+vgi-rpc 0.53.1, pyArrow 26.0.1 and pySigma 2.1.0; these versions are recorded in
+coverage provenance. Parsing and evaluation are local after installation. The
+notebook is validated on macOS Apple silicon using Haybarn 2.0.0rc11. A disposable
+empty SQL-secret directory and disabled persistent secrets isolate the session;
+cleanup closes the database and worker.
+
+Change one policy parameter to include condition matches whose source labels do
+not establish the rule's declared scope:
 
 ```sh
-uv run --locked python execute.py --parameters '{"ENFORCE_LOGSOURCE": false}' --output-dir validation/unscoped
+uv run --locked --extra runner vgi-notebooks \
+  --parameters '{"ENFORCE_LOGSOURCE": false}' \
+  --output-dir validation/unscoped
 ```
 
-Overrides require a separate output directory, which receives branding, fixtures and
-environment companions. Removing scope gating raises selected matches from two to
-four, with no change to raw worker matches or field availability. The wrong-source
-and unknown-source fixtures contain the same positive event payload as the two
-in-scope records. Reset `True` to restore the default.
+The selected population rises from two to four; raw condition matches and the
+field-availability grid stay unchanged. `wrong-source` and `unknown-source` have
+the same matching JSON payload as the two in-scope fixtures. This comparison does
+not authenticate labels, fix malformed events, or measure detection accuracy.
+Reset `ENFORCE_LOGSOURCE=True` for the saved default.
 
-## Startup and provenance
+The shared [standard](https://github.com/Query-farm/vgi-example-notebooks/blob/v0.3.2/docs/standard.md)
+and runner are pinned at **v0.3.2**, without duplicated presentation/runner files.
+Native SVG outputs also have content-addressed `charts/` assets for GitHub;
+experiment copies keep native SVG. Keep historical chart assets when updating an
+example. The runner preserves the saved default on failure and requires a separate
+destination for parameter overrides.
 
-The visible literal `ATTACH` uses `uvx --from` at immutable Git commit
-`42390f68a4febac437403b2f48ada067f1c6fe23` (release v0.4.0), with worker pins
-`vgi-python==0.51.0`, `vgi-rpc==0.53.1`, `pyarrow==26.0.1` and `pysigma==2.0.2`.
-These match the tested protocol/parser family; the notebook environment has its own
-lockfile. To upgrade, change the visible launcher pin and verify both parameter
-settings. No local worker code is imported into the notebook kernel.
+[Coverage evidence](coverage.json) records **five of five public SQL surfaces** for
+release v0.4.0 and the reviewed current-public revision: four functions and the
+`supported_modifiers` view. `coverage/` contains complete function, table and view
+catalog exports, hash-bound execution receipts and explicit narrative reviews.
+Current-source catalog discovery is separate from the release used by the notebook;
+metadata-only source differences do not add public surfaces. No hard or
+credential-dependent objects are excluded.
 
-`fixtures/events.jsonl` contains twelve authored records with synthetic source labels
-and event strings: matching objects, absent/null fields, nonmatching values, an empty
-object, a JSON array, malformed JSON, and NULL input. There are no real accounts,
-credentials or machine logs. Source labels are fixture annotations, not authenticated
-provenance. `fixtures/manifest.json` records the file hash. Regenerate it with:
+The original `fixtures/events.jsonl`, manifest and deterministic builder are retained
+as provenance. The notebook's inline records match them exactly. Rebuild those
+archived files with `uv run --locked python fixtures/build.py`. All data is synthetic;
+source labels are authored annotations and no real account or machine log is used.
 
-```sh
-uv run --locked python fixtures/build.py
-```
-
-The rule source is visible in SQL. Folded preparation quotes that exact source for
-constant-argument table calls; `sigma_rule_info` and `sigma_match_fields` still run
-through VGI. The latter supplies the field-coverage grid. No private ruleset or
-external rule repository is downloaded.
-
-## Interpretation and validation
-
-The worker evaluates the condition tree, without applying the `logsource` metadata
-as an event-routing filter. SQL explicitly compares product/service labels. A label
-match does not authenticate provenance. The example's completeness grid is specific
-to flat fields in a positive-AND rule; OR, NOT, null comparisons and nested fields
-need different interpretation.
-
-Malformed and non-object event JSON return false; absent input returns NULL. The
-notebook retains those distinctions instead of treating every false result as a
-valid negative observation. A rule match or declared severity is not an incident
-verdict. The experiment broadens selection scope; it does not measure precision,
-recall, prevalence or the quality of the rule.
-
-Default and detached experiment runs pass twelve SQL checks and two chart
-reconciliations. Both charts are inspected in both modes. Runner guards cover
-missing output directory for overrides, unknown parameters and invalid-parameter
-failure preserving saved outputs. Fixture regeneration matches the saved hash.
-
-Repository validation passes 54 pytest tests, Ruff/format, mypy, CI-isolated
-pydoclint, and 63/71/63 SQL assertions across subprocess/HTTP/Unix transports (four
-cases each). The existing metadata gate exits 2: score 100/100, L0, zero errors,
-one VGI417 warning for oversized metadata on `sigma.main`. Structural and behavioral
-checks ran; the baseline metadata limitation is unchanged. Worker source and root
-manifest/lock files remain unchanged.
-
-Official Query.Farm Strata Sun and VGI assets are bundled unchanged. The wordmark
-links to Query.Farm at the notebook's top and final bottom.
+The evaluator applies the condition tree, without routing by `logsource`; SQL makes
+source policy explicit. Malformed/non-object JSON returns false, while SQL NULL
+returns NULL. The field grid is specific to flat fields in a positive-AND rule;
+OR, NOT, null comparisons and nested paths need different coverage interpretation.
+A rule match or declared severity is not an incident verdict.

@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "catalogs": {
+    "released": {
+      "path": "coverage/catalog-released.json",
+      "sha256": "0f15ee452bbd95c956333622c502c245ba5a481e294d5e10b595a45b25eced93",
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_ortools",
+        "reviewed_at": "2026-11-14T17:50:14.003395+00:00",
+        "catalog_sha256": "0f15ee452bbd95c956333622c502c245ba5a481e294d5e10b595a45b25eced93",
+        "notes": "Reviewed complete runtime function/table/view exports: 4 functions +1 public view, normalized as a table surface; no hidden authenticated/write functions or difficult objects omitted. Current source domain/signatures unchanged from released runtime; view metadata is not silently discarded."
+      }
+    },
+    "current": {
+      "path": "coverage/catalog-current.json",
+      "sha256": "1856ec1e303c4597a8a6afe1366ff16feb1019d58364af897ee4d70367c5e844",
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_ortools",
+        "reviewed_at": "2026-11-14T17:50:14.003395+00:00",
+        "catalog_sha256": "1856ec1e303c4597a8a6afe1366ff16feb1019d58364af897ee4d70367c5e844",
+        "notes": "Reviewed complete runtime function/table/view exports: 4 functions +1 public view, normalized as a table surface; no hidden authenticated/write functions or difficult objects omitted. Current source domain/signatures unchanged from released runtime; view metadata is not silently discarded."
+      }
+    }
+  },
+  "notebooks": [
+    {
+      "path": "01_condition_matches_need_source_scope.ipynb",
+      "sha256": "b233900bde1f77acc7f57ebc1f5f5a04723bb1433b434d074bfce058778f1daa",
+      "execution": {
+        "path": "coverage/run-01.json",
+        "sha256": "1d726b93ee61aa893b0e076e12f9c559163e49e321830a431710c7cc316472d5"
+      }
+    }
+  ],
+  "examples": [
+    {
+      "object": {
+        "schema": "main",
+        "name": "supported_modifiers"
+      },
+      "notebook": "01_condition_matches_need_source_scope.ipynb",
+      "sql": [
+        {
+          "cell": "modifier-preflight",
+          "reference": "sigma.main.supported_modifiers"
+        }
+      ],
+      "narrative_cells": [
+        "modifier-question"
+      ],
+      "result_cells": [
+        "modifier-preflight"
+      ],
+      "interpretation_cells": [
+        "modifier-interpretation"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_ortools",
+        "reviewed_at": "2026-11-14T17:50:14.003395+00:00",
+        "notebook_sha256": "b233900bde1f77acc7f57ebc1f5f5a04723bb1433b434d074bfce058778f1daa",
+        "catalog_sha256": [
+          "0f15ee452bbd95c956333622c502c245ba5a481e294d5e10b595a45b25eced93",
+          "1856ec1e303c4597a8a6afe1366ff16feb1019d58364af897ee4d70367c5e844"
+        ],
+        "purpose": "Check whether a proposed rule uses evaluator-supported comparison semantics.",
+        "finding": "The release lists six modifiers. Plain numeric equality is available; base64 is absent. The explicit negative compilation control rejects the unsupported rewrite rather than silently substituting behavior."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "sigma_check"
+      },
+      "notebook": "01_condition_matches_need_source_scope.ipynb",
+      "sql": [
+        {
+          "cell": "31ff2d8d",
+          "reference": "sigma.main.sigma_check"
+        }
+      ],
+      "narrative_cells": [
+        "25cfe2a4"
+      ],
+      "result_cells": [
+        "31ff2d8d"
+      ],
+      "interpretation_cells": [
+        "96443109"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_ortools",
+        "reviewed_at": "2026-11-14T17:50:14.003395+00:00",
+        "notebook_sha256": "b233900bde1f77acc7f57ebc1f5f5a04723bb1433b434d074bfce058778f1daa",
+        "catalog_sha256": [
+          "0f15ee452bbd95c956333622c502c245ba5a481e294d5e10b595a45b25eced93",
+          "1856ec1e303c4597a8a6afe1366ff16feb1019d58364af897ee4d70367c5e844"
+        ],
+        "purpose": "Gate evaluation on a valid, supported rule while retaining rejected controls.",
+        "finding": "One rule compiles; two are rejected: missing required structure and unsupported base64 modifier. Acceptance checks syntax and support, not operational detection quality."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "sigma_rule_info"
+      },
+      "notebook": "01_condition_matches_need_source_scope.ipynb",
+      "sql": [
+        {
+          "cell": "300e640f",
+          "reference": "sigma.main.sigma_rule_info"
+        }
+      ],
+      "narrative_cells": [
+        "25cfe2a4"
+      ],
+      "result_cells": [
+        "300e640f",
+        "81dd9412"
+      ],
+      "interpretation_cells": [
+        "91ae04df"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_ortools",
+        "reviewed_at": "2026-11-14T17:50:14.003395+00:00",
+        "notebook_sha256": "b233900bde1f77acc7f57ebc1f5f5a04723bb1433b434d074bfce058778f1daa",
+        "catalog_sha256": [
+          "0f15ee452bbd95c956333622c502c245ba5a481e294d5e10b595a45b25eced93",
+          "1856ec1e303c4597a8a6afe1366ff16feb1019d58364af897ee4d70367c5e844"
+        ],
+        "purpose": "Use declared product/service metadata to choose a source-scoped review population.",
+        "finding": "The rule declares windows/security, yielding two selected in-scope positives out of four raw condition matches; unknown and wrong source labels withhold the other two."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "sigma_match_fields"
+      },
+      "notebook": "01_condition_matches_need_source_scope.ipynb",
+      "sql": [
+        {
+          "cell": "300e640f",
+          "reference": "sigma.main.sigma_match_fields"
+        }
+      ],
+      "narrative_cells": [
+        "7707febc"
+      ],
+      "result_cells": [
+        "ffeaae12",
+        "98790b71"
+      ],
+      "interpretation_cells": [
+        "98790b71"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_ortools",
+        "reviewed_at": "2026-11-14T17:50:14.003395+00:00",
+        "notebook_sha256": "b233900bde1f77acc7f57ebc1f5f5a04723bb1433b434d074bfce058778f1daa",
+        "catalog_sha256": [
+          "0f15ee452bbd95c956333622c502c245ba5a481e294d5e10b595a45b25eced93",
+          "1856ec1e303c4597a8a6afe1366ff16feb1019d58364af897ee4d70367c5e844"
+        ],
+        "purpose": "Use rule-derived field names to audit input evidence before interpreting negative matches.",
+        "finding": "EventID and LogonType produce a 12-by-2 availability grid, retaining absent, explicit NULL and unavailable fields. This positive-AND flat-field grid is not another general Sigma evaluator."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "sigma_match"
+      },
+      "notebook": "01_condition_matches_need_source_scope.ipynb",
+      "sql": [
+        {
+          "cell": "81dd9412",
+          "reference": "sigma.main.sigma_match"
+        }
+      ],
+      "narrative_cells": [
+        "be9ec70a"
+      ],
+      "result_cells": [
+        "81dd9412",
+        "91ae04df"
+      ],
+      "interpretation_cells": [
+        "91ae04df"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_ortools",
+        "reviewed_at": "2026-11-14T17:50:14.003395+00:00",
+        "notebook_sha256": "b233900bde1f77acc7f57ebc1f5f5a04723bb1433b434d074bfce058778f1daa",
+        "catalog_sha256": [
+          "0f15ee452bbd95c956333622c502c245ba5a481e294d5e10b595a45b25eced93",
+          "1856ec1e303c4597a8a6afe1366ff16feb1019d58364af897ee4d70367c5e844"
+        ],
+        "purpose": "Separate raw condition matches from source policy and malformed/missing input.",
+        "finding": "Four identical event payloads match regardless of source labels; default policy selects two and withholds two. Malformed/array inputs return false while SQL NULL stays NULL; the twelve inputs reconcile without incident claims."
+      }
+    }
+  ]
+}
