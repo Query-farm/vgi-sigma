@@ -59,8 +59,8 @@ RULE_LIBRARY_HUNT_SQL = (
 
 # --- supported_modifiers + sigma_check: explain rejected rules -------------
 UNSUPPORTED_MODIFIERS_DESCRIPTION = (
-    "Explain why rules fail sigma_check: for each rejected rule in a library, list the field "
-    "modifiers it uses that are absent from supported_modifiers (-> ssh_to_internal_net [cidr])."
+    "Find unsupported modifiers behind sigma_check rejections: for each rejected rule in a library, "
+    "list the field modifiers it uses that are absent from supported_modifiers (-> ssh_to_internal_net [cidr])."
 )
 UNSUPPORTED_MODIFIERS_SQL = (
     "WITH " + _RULE_LIBRARY_CTE + ", "

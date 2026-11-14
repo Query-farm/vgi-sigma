@@ -185,18 +185,23 @@ _AGENT_TEST_TASKS = json.dumps(
             ),
         },
         {
-            "name": "alert-rdp-failures-with-severity",
+            "name": "rule-library-hit-counts",
             "prompt": (
-                "A Windows security log has four events, each a JSON object: event 1 is "
-                '{"EventID": 4625, "LogonType": 10, "TargetUserName": "admin"}, event 2 is '
-                '{"EventID": 4625, "LogonType": 3, "TargetUserName": "admin"}, event 3 is '
-                '{"EventID": 4624, "LogonType": 10, "TargetUserName": "admin"} and event 4 is '
-                '{"EventID": 4625, "LogonType": 10, "TargetUserName": "guest"}. A Sigma rule '
-                "titled 'Failed RDP Logon' with level 'high', logsource product windows / service "
-                "security, selects EventID 4625 and LogonType 10 (condition 'selection'). Raise an "
-                "alert for every event the rule matches: return event_id (INTEGER), the rule's "
-                "title and the rule's severity level as read from the rule's own metadata "
-                "(both VARCHAR), one row per matching event, ordered by event_id."
+                "A small Sigma rule library has three rules. rdp_failure: title 'Failed RDP "
+                "Logon', logsource product windows / service security, selection EventID 4625 and "
+                "LogonType 10. powershell_service: title 'PowerShell Service Install', logsource "
+                "product windows / service system, selection EventID 7045 and ServiceFileName "
+                "containing 'powershell'. high_port: title 'High Destination Port', logsource "
+                "category network_connection, selection DestinationPort greater than 1024 (the gt "
+                "modifier). Every rule's condition is 'selection'. A Windows security log has four "
+                "JSON events: event 1 "
+                '{"EventID": 4625, "LogonType": 10, "TargetUserName": "admin"}, event 2 '
+                '{"EventID": 4625, "LogonType": 3, "TargetUserName": "admin"}, event 3 '
+                '{"EventID": 4624, "LogonType": 10, "TargetUserName": "admin"} and event 4 '
+                '{"EventID": 4625, "LogonType": 10, "TargetUserName": "guest"}. Skip any rule the '
+                "engine cannot evaluate, and for every remaining rule count how many events it "
+                "matches, keeping rules with zero matches. Return rule_name (VARCHAR) and hits "
+                "(BIGINT), ordered by rule_name."
             ),
         },
         {
