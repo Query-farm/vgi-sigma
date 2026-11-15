@@ -50,14 +50,15 @@ _FUNCTIONS: list[type] = [
 ]
 
 _CATALOG_DESCRIPTION_LLM = (
-    "Evaluate Sigma detection rules ('detection-as-code') against log/event rows directly in SQL, "
-    "backed by pySigma. Test whether a JSON event matches a Sigma rule per-row over a whole log "
-    "column (sigma_match), validate that a rule parses and compiles with only supported features "
-    "(sigma_check), read a rule's metadata such as title, id, severity level, status, description, "
-    "logsource product/service, and MITRE ATT&CK tags (sigma_rule_info), and list the event fields a "
-    "rule keys on for index and coverage planning (sigma_match_fields). A rule is compiled once and "
-    "evaluated per row, so a constant rule scanned across a log table is cheap. Use for SIEM-style "
-    "threat detection, rule triage, and coverage analysis over event/log tables in SQL."
+    "Evaluate Sigma detection rules ('detection-as-code', https://sigmahq.io) against log/event rows "
+    "directly in SQL, backed by pySigma (https://github.com/SigmaHQ/pySigma). The worker covers the "
+    "everyday detection-engineering loop: match events against a rule over a whole log column to hunt for "
+    "a known threat, validate that a rule parses and compiles with only supported features, and "
+    "introspect a rule's header metadata (title, id, level, status, logsource, MITRE ATT&CK tags) and the "
+    "event fields it keys on for index and coverage planning. Events are JSON object strings (for example "
+    "from `to_json(row)`), and every rule needs a non-empty `logsource:` block. A rule is compiled once "
+    "per distinct text and evaluated per row, so a constant rule scanned across a log table is cheap. Use "
+    "it for SIEM-style threat detection, rule triage, and coverage analysis over event/log tables in SQL."
 )
 
 _CATALOG_DESCRIPTION_MD = (
