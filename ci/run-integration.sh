@@ -1,224 +1,182 @@
 #!/usr/bin/env bash
-# Copyright 2026 Query Farm LLC - https://query.farm
+# Run test/sql/*.test through DuckDB (the haybarn-unittest sqllogictest runner)
+# against this worker, over one transport. Adapted from the vgi-starter
+# (python) ci/run-integration.sh.
 #
-# Run this repo's sqllogictest suite (test/sql/*.test) against the vgi-sigma
-# VGI worker, using a prebuilt standalone `haybarn-unittest` and the signed
-# community `vgi` extension — no C++ build from source. See ci/README.md.
-#
-# The SAME suite is exercised over three VGI transports, selected by $TRANSPORT.
-# The vgi extension picks the transport from the LOCATION string the .test files
-# ATTACH (`${VGI_SIGMA_WORKER}`):
-#
-#   subprocess : a bare stdio command (`uv run sigma_worker.py`) — the
-#                extension spawns the worker per query and talks Arrow IPC over
-#                stdin/stdout. Default; current behavior.
-#   http       : the worker is started out-of-band in `--http` mode on an auto
-#                port; LOCATION becomes `http://127.0.0.1:<port>`.
-#   unix       : the worker is started out-of-band on an AF_UNIX socket;
-#                LOCATION becomes `unix://<sock>`.
-#
-# The sigma worker is offline/compute (it evaluates Sigma rules in-process; no
-# network, no fixture files — every rule is inline in the .test files), so no
-# mock/fixture server is needed for any transport.
+#   WORKER=/abs/path/to/worker-executable TRANSPORT=stdio ci/run-integration.sh
 #
 # Required environment:
-#   HAYBARN_UNITTEST     path to the haybarn-unittest binary
+#   WORKER            absolute path to an executable that serves the worker:
+#                     no arguments = stdio; `--http --port 0` = HTTP, printing
+#                     `PORT:<n>` on stdout once listening. For stdio it may also
+#                     be a full command line (e.g. `docker run -i --rm IMG stdio`).
 # Optional:
-#   TRANSPORT            subprocess | http | unix (default: subprocess)
-#   WORKER_CMD           the stdio command that runs the worker. Used directly
-#                        as the LOCATION for subprocess, and as the process to
-#                        boot the server for http/unix. Defaults to
-#                        `uv run --no-sync --python 3.13 <repo>/sigma_worker.py`.
-#   STAGE                scratch dir for the preprocessed test tree (default: mktemp)
+#   TRANSPORT         stdio | launch | http                        (default: stdio)
+#   HAYBARN_UNITTEST  path to haybarn-unittest   (default: the one on PATH)
+#   MIN_EXECUTED      fail if fewer test cases ran (default: 1)
+#   EXPECTED_SKIP_REASONS  newline-separated skip reasons that are allowed,
+#                     e.g. "require-env SOME_LIVE_KEY". Any other skip fails.
+#   TEST_PATTERN      runner filter over the staged tree (default: test/sql/*)
+#   WORKER_URL        http only: test an already-running HTTP worker (e.g. a
+#                     Docker container) instead of starting $WORKER --http
+#   WARMUP_TIMEOUT    seconds allowed for the extension install (default: 300)
+#   KEEP_STAGE=1      keep the staged test tree for debugging
+#
+# The test files ATTACH `LOCATION '{VGI_SIGMA_WORKER}'`; this script exports that
+# variable per transport.
+#
+# Transports:
+#   stdio   DuckDB spawns the worker and talks over stdin/stdout (the default).
+#   launch  DuckDB starts the worker once on an AF_UNIX socket and pools
+#           connections (`LOCATION 'launch:/path'`); best for slow-starting
+#           runtimes such as the JVM.
+#   http    the worker runs as an HTTP server (`--http`), as in Docker deploys.
+#
+# Why the extra checks: the sqllogictest runner turns some errors into silent
+# SKIPs (anything mentioning "HTTP" without --test-config) and exits 0 when no
+# test matched. Both would make a broken lane look green, so this script passes
+# a config that disables error-skipping and fails on any unexpected skip.
 set -euo pipefail
 
-: "${HAYBARN_UNITTEST:?path to the haybarn-unittest binary}"
+TRANSPORT="${TRANSPORT:-stdio}"
+if [ "$TRANSPORT" != "http" ] || [ -z "${WORKER_URL:-}" ]; then
+  : "${WORKER:?absolute path to the worker executable}"
+fi
+HAYBARN_UNITTEST="${HAYBARN_UNITTEST:-$(command -v haybarn-unittest || true)}"
+MIN_EXECUTED="${MIN_EXECUTED:-1}"
+TEST_PATTERN="${TEST_PATTERN:-test/sql/*}"
+[ -n "$HAYBARN_UNITTEST" ] || { echo "::error::haybarn-unittest not found (make tools)"; exit 1; }
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/.." && pwd)"
-STAGE="${STAGE:-$(mktemp -d)}"
-TRANSPORT="${TRANSPORT:-subprocess}"
-WORKER_CMD="${WORKER_CMD:-uv run --no-sync --python 3.13 $REPO/sigma_worker.py}"
-
-case "$TRANSPORT" in
-  subprocess|http|unix) ;;
-  *) echo "ERROR: unknown TRANSPORT '$TRANSPORT' (want subprocess|http|unix)" >&2; exit 2 ;;
-esac
-
-echo "Staging preprocessed tests into $STAGE ..."
-mkdir -p "$STAGE/test/sql"
-for f in "$REPO"/test/sql/*.test; do
-  awk -f "$HERE/preprocess-require.awk" "$f" > "$STAGE/test/sql/$(basename "$f")"
-done
-
-# ---------------------------------------------------------------------------
-# Per-transport: resolve VGI_SIGMA_WORKER (the LOCATION) and, for the
-# out-of-band transports, boot the worker server + arrange trap-cleanup.
-# ---------------------------------------------------------------------------
-SERVER_PID=""
-SOCK=""
-PORT_FILE=""
-
+STAGE="$(mktemp -d)"
+PIDS=()
 cleanup() {
-  # Preserve the script's exit status: this runs on EXIT, so its own last
-  # command must not clobber the real exit code (a bare `[ -n "$x" ]` that is
-  # false returns 1 and would turn a green run red under `set -e`).
-  local rc=$?
-  if [[ -n "$SERVER_PID" ]]; then
-    kill "$SERVER_PID" 2>/dev/null || true
-    wait "$SERVER_PID" 2>/dev/null || true
-  fi
-  if [[ -n "$SOCK" ]]; then rm -f "$SOCK"; fi
-  if [[ -n "$PORT_FILE" ]]; then rm -f "$PORT_FILE"; fi
-  return "$rc"
+  for p in ${PIDS[@]+"${PIDS[@]}"}; do kill "$p" 2>/dev/null || true; done
+  [ "${KEEP_STAGE:-0}" = "1" ] && echo "stage kept at $STAGE" || rm -rf "$STAGE"
 }
 trap cleanup EXIT
 
-case "$TRANSPORT" in
-  subprocess)
-    export VGI_SIGMA_WORKER="$WORKER_CMD"
-    echo "Transport: subprocess/stdio — VGI_SIGMA_WORKER=$VGI_SIGMA_WORKER"
-    ;;
+# start_server <log> <cmd...> — run a server that prints PORT:<n>; sets PORT.
+PORT=""
+start_server() {
+  local log="$1"; shift
+  # Create the log before backgrounding: the child opens its redirect only
+  # once it is scheduled, and the poll below would otherwise read a missing
+  # file, which under set -e -o pipefail kills the whole run.
+  : > "$log"
+  "$@" >"$log" 2>&1 &
+  local pid=$!
+  PIDS+=("$pid")
+  for _ in $(seq 1 120); do
+    kill -0 "$pid" 2>/dev/null || { echo "::error::'$*' exited early:"; cat "$log"; return 1; }
+    PORT="$(sed -n 's/^PORT:\([0-9][0-9]*\).*/\1/p' "$log" | head -1)"
+    [ -n "$PORT" ] && return 0
+    sleep 0.5
+  done
+  echo "::error::'$*' never printed PORT:<n>"; cat "$log"; return 1
+}
 
-  http)
-    # The vgi extension's HTTP transport is implemented on top of DuckDB's
-    # httpfs extension, so an `http://` ATTACH binds with
-    #   "Binder Error: VGI HTTP transport requires the httpfs extension."
-    # unless httpfs is loaded first. (The haybarn sqllogictest runner's default
-    # skip list swallows any error containing "HTTP", so without this the whole
-    # suite would silently SKIP rather than fail — a fake pass.) The .test files
-    # are transport-agnostic; inject a signed `INSTALL httpfs FROM core; LOAD
-    # httpfs;` right after each `LOAD vgi;` in the staged files, so httpfs is
-    # present only when we actually run over HTTP.
-    echo "Injecting httpfs load into staged tests (HTTP transport needs it) ..."
-    for sf in "$STAGE"/test/sql/*.test; do
-      awk '
-        { print }
-        /^LOAD[ \t]+vgi[ \t]*;[ \t]*$/ {
-          print "";
-          print "statement ok";
-          print "INSTALL httpfs FROM core;";
-          print "";
-          print "statement ok";
-          print "LOAD httpfs;";
-        }
-      ' "$sf" > "$sf.tmp" && mv "$sf.tmp" "$sf"
-    done
+HTTP=0
+[ "$TRANSPORT" = "http" ] && HTTP=1
 
-    # Boot the worker in HTTP mode on an auto-selected port. The worker writes
-    # the chosen port to --port-file atomically (tmp + rename), so we watch for
-    # the file to appear rather than parsing stdout. HTTP mode needs the `http`
-    # extra (waitress); WORKER_CMD resolves it from the PEP 723 header / lock.
-    # cwd = STAGE so any relative-path resolution matches the runner's cwd.
-    PORT_FILE="$(mktemp -u "${TMPDIR:-/tmp}/sigma-port.XXXXXX")"
-    LOG_FILE="${TMPDIR:-/tmp}/sigma-http-server.log"
-    echo "Starting HTTP worker: $WORKER_CMD --http --port 0 --port-file $PORT_FILE"
-    # shellcheck disable=SC2086
-    ( cd "$STAGE" && exec $WORKER_CMD --http --port 0 --port-file "$PORT_FILE" ) > "$LOG_FILE" 2>&1 &
-    SERVER_PID=$!
+# Stage the tests, rewriting `require vgi` into a signed INSTALL + LOAD (the
+# standalone runner links no extensions) and loading httpfs for HTTP workers.
+# These tests LOAD vgi themselves (haybarn skips `require vgi`), so httpfs is
+# also loaded after each bare `LOAD vgi;`.
+mkdir -p "$STAGE/test/sql"
+for f in "$REPO"/test/sql/*.test; do
+  awk -v http="$HTTP" '
+    /^require[ \t]+vgi[ \t]*$/ {
+      print "statement ok"; print "LOAD vgi;"; print ""
+      if (http == 1) { print "statement ok"; print "LOAD httpfs;"; print "" }
+      next
+    }
+    /^LOAD[ \t]+vgi[ \t]*;[ \t]*$/ && http == 1 {
+      print; print ""; print "statement ok"; print "LOAD httpfs;"
+      next
+    }
+    { print }' "$f" > "$STAGE/test/sql/$(basename "$f")"
+done
 
-    PORT=""
-    for _ in $(seq 1 120); do
-      if ! kill -0 "$SERVER_PID" 2>/dev/null; then
-        echo "ERROR: HTTP worker exited before reporting a port. Log:" >&2
-        cat "$LOG_FILE" >&2
-        exit 1
-      fi
-      if [[ -s "$PORT_FILE" ]]; then
-        PORT="$(tr -d '[:space:]' < "$PORT_FILE")"
-        [[ -n "$PORT" ]] && break
-      fi
-      sleep 0.5
-    done
-    if [[ -z "$PORT" ]]; then
-      echo "ERROR: timed out waiting for HTTP worker port-file. Log:" >&2
-      cat "$LOG_FILE" >&2
-      exit 1
-    fi
-    echo "HTTP worker ready on port $PORT (pid $SERVER_PID)"
-    # The LOCATION must be the bare scheme://host:port with NO path suffix; the
-    # extension POSTs each RPC method at <LOCATION>/<method>.
-    export VGI_SIGMA_WORKER="http://127.0.0.1:$PORT"
-    ;;
-
-  unix)
-    # Boot the worker bound to an AF_UNIX socket. We poll for the socket file to
-    # appear (and bail if the process dies). cwd = STAGE as above.
-    SOCK="${TMPDIR:-/tmp}/sigma-$$.sock"
-    rm -f "$SOCK"
-    LOG_FILE="${TMPDIR:-/tmp}/sigma-unix-server.log"
-    echo "Starting unix worker: $WORKER_CMD --unix $SOCK"
-    # shellcheck disable=SC2086
-    ( cd "$STAGE" && exec $WORKER_CMD --unix "$SOCK" ) > "$LOG_FILE" 2>&1 &
-    SERVER_PID=$!
-
-    READY=""
-    for _ in $(seq 1 120); do
-      if ! kill -0 "$SERVER_PID" 2>/dev/null; then
-        echo "ERROR: unix worker exited before binding the socket. Log:" >&2
-        cat "$LOG_FILE" >&2
-        exit 1
-      fi
-      if [[ -S "$SOCK" ]]; then
-        READY=1
-        break
-      fi
-      sleep 0.5
-    done
-    if [[ -z "$READY" ]]; then
-      echo "ERROR: timed out waiting for unix worker socket. Log:" >&2
-      cat "$LOG_FILE" >&2
-      exit 1
-    fi
-    echo "unix worker ready on $SOCK (pid $SERVER_PID)"
-    export VGI_SIGMA_WORKER="unix://$SOCK"
-    ;;
-esac
-
+# Workers resolve relative paths against the runner's directory (stdio and
+# launch inherit it), so the HTTP worker is started there too.
 cd "$STAGE"
 
-# haybarn-unittest 2.0 isolates $HOME per run; --keep-home keeps the real home so
-# the warmed extension cache (~/.haybarn) is shared by the suite run below.
-#
-# Warm the extension cache once: vgi from the signed community channel. A miss
-# here is only a warning — the per-test INSTALL/LOAD (injected by
-# preprocess-require.awk) is what actually gates each file.
-echo "Warming the extension cache (vgi from community) ..."
-mkdir -p "$STAGE/test"
-cat > "$STAGE/test/_warm.test" <<'EOF'
-# name: test/_warm.test
-# group: [warm]
+WORKER_PID=""
+case "$TRANSPORT" in
+  stdio)  export VGI_SIGMA_WORKER="$WORKER" ;;
+  launch) export VGI_SIGMA_WORKER="launch:$WORKER" ;;
+  http)
+    if [ -n "${WORKER_URL:-}" ]; then
+      export VGI_SIGMA_WORKER="$WORKER_URL"
+    else
+      start_server "$STAGE/worker.log" "$WORKER" --http --port 0
+      WORKER_PID="${PIDS[${#PIDS[@]}-1]}"
+      export VGI_SIGMA_WORKER="http://127.0.0.1:$PORT"
+    fi
+    ;;
+  *) echo "::error::unknown TRANSPORT=$TRANSPORT (expected stdio|launch|http)"; exit 1 ;;
+esac
+
+# Install the extensions once, refreshing any stale cached copy of vgi.
+cat > "$STAGE/test/_warm.test" <<'EOT'
 statement ok
-INSTALL vgi FROM community;
-EOF
-"$HAYBARN_UNITTEST" --keep-home "test/_warm.test" >/dev/null 2>&1 || echo "::warning::extension warm step did not fully succeed"
+FORCE INSTALL vgi FROM community;
+
+statement ok
+INSTALL httpfs FROM core;
+
+statement ok
+INSTALL json FROM core;
+EOT
+# Bounded: a stalled extension download would otherwise hang the lane until the
+# job timeout. WARMUP_TIMEOUT is in seconds.
+"$HAYBARN_UNITTEST" --keep-home --test-dir "$STAGE" "test/_warm.test" >/dev/null 2>&1 &
+warm_pid=$!
+warm_deadline=$((SECONDS + ${WARMUP_TIMEOUT:-300}))
+while kill -0 "$warm_pid" 2>/dev/null && [ "$SECONDS" -lt "$warm_deadline" ]; do sleep 1; done
+if kill -0 "$warm_pid" 2>/dev/null; then
+  kill "$warm_pid" 2>/dev/null || true
+  wait "$warm_pid" 2>/dev/null || true
+  echo "::warning::extension warm-up timed out after ${WARMUP_TIMEOUT:-300}s (stalled download?)"
+elif ! wait "$warm_pid"; then
+  echo "::warning::extension warm-up did not fully succeed"
+fi
 rm -f "$STAGE/test/_warm.test"
 
-# Run the whole suite in one invocation, capturing the runner's native
-# sqllogictest report so we can both stream it AND guard against a silent skip.
-#
-# IMPORTANT: the DuckDB/Haybarn sqllogictest runner SKIPS (not fails, exit 0) a
-# test whose error message matches a built-in network-error allowlist that
-# includes the substring "HTTP" / "Unable to connect". So a broken HTTP/unix
-# transport would otherwise show "All tests were skipped" and the job would go
-# GREEN having run nothing — a fake pass. We detect that and fail explicitly.
-echo "Running suite (transport: $TRANSPORT, worker: $VGI_SIGMA_WORKER) ..."
-RUN_LOG="$STAGE/run.log"
-set +e
-"$HAYBARN_UNITTEST" --keep-home "test/sql/*" 2>&1 | tee "$RUN_LOG"
-RUN_RC="${PIPESTATUS[0]}"
-set -e
+cat > "$STAGE/no_error_skip.json" <<'EOT'
+{"skip_error_messages": ["__vgi_starter_never_matches__"]}
+EOT
 
-if [ "$RUN_RC" -ne 0 ]; then
-  echo "ERROR: suite failed (transport: $TRANSPORT, rc=$RUN_RC)" >&2
-  exit "$RUN_RC"
-fi
+echo "Running $TEST_PATTERN over $TRANSPORT (worker: $VGI_SIGMA_WORKER)"
+LOG="$STAGE/unittest.log"
+rc=0
+( cd "$STAGE" && "$HAYBARN_UNITTEST" --keep-home --test-dir "$STAGE" \
+    --test-config "$STAGE/no_error_skip.json" "$TEST_PATTERN" ) 2>&1 | tee "$LOG" && rc=0 || rc="${PIPESTATUS[0]}"
 
-# Guard against the silent-skip fake-pass (see comment above).
-if grep -q 'All tests were skipped' "$RUN_LOG"; then
-  echo "ERROR: every test was SKIPPED on transport '$TRANSPORT' (the runner's" >&2
-  echo "       built-in network-error skip swallowed the real error). This is" >&2
-  echo "       NOT a pass. Skip reason reported by the runner:" >&2
-  grep -A3 'Skipped tests for the following reasons' "$RUN_LOG" >&2 || true
-  exit 1
+if grep -q 'No test cases matched\|No tests ran' "$LOG"; then
+  echo "::error::no test cases matched; the staging is wrong"; exit 1
 fi
+total="$(sed -n 's/^\[[0-9]*\/\([0-9]*\)\].*/\1/p' "$LOG" | tail -1)"
+total="${total:-0}"
+skips="$(awk '/^Skipped tests for the following reasons:/{b=1;next} b&&/^[[:space:]]*$/{b=0} b&&match($0,/: [0-9]+[[:space:]]*$/){print substr($0,1,RSTART-1) "\t" substr($0,RSTART+2)+0}' "$LOG")"
+skipped=0
+while IFS=$'\t' read -r reason n; do
+  [ -n "$reason" ] || continue
+  skipped=$((skipped + n))
+  if ! printf '%s\n' "${EXPECTED_SKIP_REASONS:-}" | grep -qxF "$reason"; then
+    echo "::error::unexpected skip: '$reason'. A test file silently stopped running;" \
+         "fix the gate or add it to EXPECTED_SKIP_REASONS."
+    rc=1
+  fi
+done <<< "$skips"
+executed=$((total - skipped))
+echo "executed $executed of $total test files over $TRANSPORT ($skipped skipped)"
+if [ "$executed" -lt "$MIN_EXECUTED" ]; then
+  echo "::error::only $executed test files ran (MIN_EXECUTED=$MIN_EXECUTED)"; rc=1
+fi
+if [ -n "$WORKER_PID" ] && ! kill -0 "$WORKER_PID" 2>/dev/null; then
+  echo "::error::the HTTP worker died during the run:"; cat "$STAGE/worker.log"; rc=1
+fi
+exit "$rc"
