@@ -470,7 +470,7 @@ def match(event_json: str | None, rule_yaml: str | None) -> bool | None:
     compiled = compile_rule(rule_yaml)  # may raise -> clear error to caller
     try:
         event = json.loads(event_json)
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError, ValueError:
         return False
     if not isinstance(event, dict):
         return False
