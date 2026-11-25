@@ -17,7 +17,7 @@ Compile a Sigma rule **once**, then test it against every row of a log table:
 
 ```sql
 INSTALL vgi FROM community; LOAD vgi;
-ATTACH 'sigma' (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-sigma@v0.4.2 vgi-sigma-worker');
+ATTACH 'sigma' (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-sigma@v0.5.0 vgi-sigma-worker');
 
 -- The headline: which log rows match a rule?
 SELECT *
@@ -39,6 +39,8 @@ alongside `vgi-yara`, `vgi-ioc`, `vgi-cve`, `vgi-pe`, and `vgi-x509`.
 
 ---
 
+vgi-sigma 0.5.0 speaks VGI protocol 3.4, so it needs Haybarn 2.0.1 or newer (Haybarn 2.0.0 loads a 3.3 `vgi` extension that cannot attach it).
+
 ## Quick start
 
 The worker isn't on PyPI; [uv](https://docs.astral.sh/uv/) runs it straight from a tagged release on GitHub. `uvx` builds an isolated environment on the first ATTACH and reuses it afterwards:
@@ -47,7 +49,7 @@ The worker isn't on PyPI; [uv](https://docs.astral.sh/uv/) runs it straight from
 INSTALL vgi FROM community;
 LOAD vgi;
 
-ATTACH 'sigma' AS sigma (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-sigma@v0.4.2 vgi-sigma-worker');
+ATTACH 'sigma' AS sigma (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-sigma@v0.5.0 vgi-sigma-worker');
 
 -- Does a failed-network-logon event match a brute-force detection rule?
 SELECT sigma.main.sigma_match('{"EventID": 4625, "LogonType": 3}', '{title: Failed Network Logon, logsource: {service: security}, detection: {selection: {EventID: 4625, LogonType: 3}, condition: selection}}') AS matched;
@@ -56,14 +58,14 @@ SELECT sigma.main.sigma_match('{"EventID": 4625, "LogonType": 3}', '{title: Fail
 SELECT sigma.main.sigma_check('{title: Process Create, logsource: {service: security}, detection: {sel: {EventID: 1}, condition: sel}}') AS valid;
 ```
 
-Change `@v0.4.2` to move to a newer release.
+Change `@v0.5.0` to move to a newer release.
 
 ### Other ways to run it
 
 - **Docker** (the image bundles the worker and its dependencies):
 
   ```sql
-  ATTACH 'sigma' AS sigma (TYPE vgi, LOCATION 'docker://ghcr.io/query-farm/vgi-sigma:0.4.2');
+  ATTACH 'sigma' AS sigma (TYPE vgi, LOCATION 'docker://ghcr.io/query-farm/vgi-sigma:0.5.0');
   ```
 
 - **From a local checkout** (`git clone https://github.com/Query-farm/vgi-sigma`), point `LOCATION` at `uv run --project /path/to/vgi-sigma vgi-sigma-worker`.
@@ -214,8 +216,8 @@ uv run ruff check . && uv run mypy vgi_sigma/
 
 `make test-sql` runs the sqllogictest files under `test/sql/` through
 `ci/run-integration.sh` over stdio, launch and http, installing the pinned
-`haybarn-unittest` into `.tools` (haybarn 2.0 is required for VGI protocol
-vgi.v3 / 3.3).
+`haybarn-unittest` into `.tools` (haybarn 2.0.1 is required for VGI protocol
+vgi.v3 / 3.4).
 
 ---
 
